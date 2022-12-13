@@ -6,7 +6,7 @@ import logging
 from shutil import rmtree
 
 from postgres_ddl.Database import Database
-from postgres_ddl.System   import SEP, SetupLogging
+from postgres_ddl.System import SEP, SetupLogging
 
 class Diff():
     def __init__(self, config):
