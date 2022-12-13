@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class TableConstraint(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Schema = (data.get("schema") or "").strip().lower()
         assert len(self.Schema) > 0, \
@@ -76,8 +77,8 @@ class TableConstraint(DDL):
         ])
 
     def DDL_Inner(self):
-        separator = f"{self.NewLine(1)}{self.Indent() * 2}"
-        return self.Indent() + self.GetDefinition(separator)
+        separator = f"{Config.NL}{Config.Indent * 2}"
+        return Config.Indent + self.GetDefinition(separator)
 
     def DDL_Create(self):
         definition = self.GetDefinition(" ")

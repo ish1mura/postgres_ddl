@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class TableTrigger(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Schema = (data.get("schema") or "").strip().lower()
         assert len(self.Schema) > 0, \
@@ -45,20 +46,20 @@ class TableTrigger(DDL):
 
     def DDL_Create(self):
         dfn = self.Definition
-        dfn = dfn.replace(" BEFORE",  f"{self.NewLine(1)}{self.Indent()}BEFORE")
-        dfn = dfn.replace(" AFTER",   f"{self.NewLine(1)}{self.Indent()}AFTER")
-        dfn = dfn.replace(" ON",      f"{self.NewLine(1)}{self.Indent()}ON")
-        dfn = dfn.replace(" FOR",     f"{self.NewLine(1)}{self.Indent()}FOR")
-        dfn = dfn.replace(" EXECUTE", f"{self.NewLine(1)}{self.Indent()}EXECUTE")
+        dfn = dfn.replace(" BEFORE",  f"{Config.NL}{Config.Indent}BEFORE")
+        dfn = dfn.replace(" AFTER",   f"{Config.NL}{Config.Indent}AFTER")
+        dfn = dfn.replace(" ON",      f"{Config.NL}{Config.Indent}ON")
+        dfn = dfn.replace(" FOR",     f"{Config.NL}{Config.Indent}FOR")
+        dfn = dfn.replace(" EXECUTE", f"{Config.NL}{Config.Indent}EXECUTE")
 
         r = f"-- Trigger: {self.Name} ON {self.Schema}.{self.Table}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += dfn + ";"
 
         if self.IsDisabled:
-            r += self.NewLine(2)
+            r += Config.NL + Config.NL
             r += self.DDL_Enabled()
 
         return r.strip()

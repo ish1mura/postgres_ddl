@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class Comment(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Type = (data.get("instance_type") or "").strip().upper()
         assert len(self.Type) > 0, \
@@ -29,7 +30,7 @@ class Comment(DDL):
         return f"{self.GetObjectType()}_{self.Type}_{self.Instance}"
 
     def DDL_Create(self):
-        return f"COMMENT ON {self.Type} {self.Instance}{self.NewLine(1)}{self.Indent()}IS '{self.Comment}';"
+        return f"COMMENT ON {self.Type} {self.Instance}{Config.NL}{Config.Indent}IS '{self.Comment}';"
 
     def DDL_Drop(self):
         return f"COMMENT ON {self.Type} {self.Instance} IS '';"

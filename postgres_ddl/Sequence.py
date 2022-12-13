@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from postgres_ddl.Comment import Comment
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
 from postgres_ddl.System import ParseACL
 
 class Sequence(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = data.get("oid")
         assert (self.Oid or 0) > 0, \
@@ -42,8 +43,7 @@ class Sequence(DDL):
                 "instance_type" : "TABLE",
                 "instance_name" : self.GetFullName(),
                 "owner_name"    : data.get("owner")
-            },
-            self.Config
+            }
         )
 
         self.Comment = Comment(
@@ -52,15 +52,14 @@ class Sequence(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "comment"       : data.get("comment")
-            },
-            self.Config
+            }
         )
 
         self.Grants = []
         for grant in ParseACL(data.get("acl"), self.Owner.Owner):
             grant["instance_type"] = self.GetTag()
             grant["instance_name"] = self.GetFullName()
-            self.Grants.append(Grant(self.GetObjectName(), grant, self.Config))
+            self.Grants.append(Grant(self.GetObjectName(), grant))
 
     def __str__(self):
         return self.GetFullName()
@@ -82,37 +81,37 @@ class Sequence(DDL):
 
     def DDL_Create(self):
         r = f"-- Sequence: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} {self.GetFullName()}"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}INCREMENT {self.Increment}"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}MINVALUE {self.MinValue}"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}MAXVALUE {self.MaxValue}"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}START 1"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}CACHE {self.Cache}"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}{self.IsCycle}"
+        r += Config.NL
+        r += f"{Config.Indent}INCREMENT {self.Increment}"
+        r += Config.NL
+        r += f"{Config.Indent}MINVALUE {self.MinValue}"
+        r += Config.NL
+        r += f"{Config.Indent}MAXVALUE {self.MaxValue}"
+        r += Config.NL
+        r += f"{Config.Indent}START 1"
+        r += Config.NL
+        r += f"{Config.Indent}CACHE {self.Cache}"
+        r += Config.NL
+        r += f"{Config.Indent}{self.IsCycle}"
         r = r.strip() + ";"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += self.Owner.DDL_Create()
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
 
         for grant in self.Grants:
             r += grant.DDL_Create()
-            r += self.NewLine(1)
-        r += self.NewLine(1)
+            r += Config.NL
+        r += Config.NL
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
-            r += self.NewLine(1)
+            r += Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return [self.Schema, "sequence"]

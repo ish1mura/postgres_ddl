@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class TableSettings(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Schema = (data.get("schema") or "").strip().lower()
         assert len(self.Schema) > 0, \
@@ -37,7 +38,7 @@ class TableSettings(DDL):
         return f"{self.Schema}.{self.Table}.{self.Field}"
 
     def DDL_Inner(self):
-        return f"{self.Indent()}{self.Field}={self.Value}"
+        return f"{Config.Indent}{self.Field}={self.Value}"
 
     def DDL_Drop(self):
         return f"ALTER TABLE {self.Schema}.{self.Table} RESET ({self.Field});"

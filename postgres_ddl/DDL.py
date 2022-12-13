@@ -2,9 +2,8 @@
 # -*- coding: utf-8 -*-
 
 class DDL(object):
-    def __init__(self, parent, data, config):
+    def __init__(self, parent, data):
         self.Parent = (parent or "").strip().lower()
-        self.Config = config
 
         assert data is not None, \
             "{0} data is null".format(type(self))
@@ -53,13 +52,3 @@ class DDL(object):
 
     def Diff(self, another):
         return []
-
-    def NewLine(self, count=1):
-        count = max((count or 1), 1)
-        return self.Config.NewLine * count
-
-    def Indent(self, length=None):
-        if length is not None and length > 0:
-            return " " * length
-        else:
-            return self.Config.Indent

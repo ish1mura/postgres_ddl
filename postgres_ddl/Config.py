@@ -2,6 +2,10 @@
 # -*- coding: utf-8 -*-
 
 class Config():
-    def __init__(self, json):
-        self.Indent = " " * (json.get("indent") or 2)
-        self.NewLine = json.get("new_line") or chr(10)
+    Indent = " " * 2
+    NL = chr(10)
+
+    @staticmethod
+    def Parse(json):
+        Config.Indent = " " * (json.get("indent") or 2)
+        Config.NL = json.get("new_line") or chr(10)
