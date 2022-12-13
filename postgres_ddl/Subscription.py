@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Owner import Owner
 
 class Subscription(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = data.get("oid")
         assert (self.Oid or 0) > 0, \
@@ -42,8 +43,7 @@ class Subscription(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "owner_name"    : data.get("owner")
-            },
-            self.Config
+            }
         )
 
     def __str__(self):
@@ -66,35 +66,35 @@ class Subscription(DDL):
 
     def DDL_Create(self):
         r = f"-- Subscription: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} {self.GetFullName()}"
-        r += self.NewLine(1)
+        r += Config.NL
         r += f"CONNECTION '{self.Connect}'"
-        r += self.NewLine(1)
+        r += Config.NL
         r += f"PUBLICATION {self.GetPublications()}"
-        r += self.NewLine(1)
+        r += Config.NL
         r += "WITH ("
-        r += self.NewLine(1)
-        r += f"{self.Indent()}enabled = {str(self.IsEnabled).upper()},"
-        r += self.NewLine(1)
-        r += f'{self.Indent()}slot_name = "{self.Slot}",'
-        r += self.NewLine(1)
-        r += f"{self.Indent()}synchronous_commit = '{self.SyncCommit}'"
-        r += self.NewLine(1)
+        r += Config.NL
+        r += f"{Config.Indent}enabled = {str(self.IsEnabled).upper()},"
+        r += Config.NL
+        r += f'{Config.Indent}slot_name = "{self.Slot}",'
+        r += Config.NL
+        r += f"{Config.Indent}synchronous_commit = '{self.SyncCommit}'"
+        r += Config.NL
         r += ");"
-        r += self.NewLine(2)
-        r += self.Owner.DDL_Create() + self.NewLine(1)
+        r += Config.NL + Config.NL
+        r += self.Owner.DDL_Create() + Config.NL
 
         if len(self.Tables) > 0:
-            r += self.NewLine(1)
-            r += '-- Tables:' + self.NewLine(1)
+            r += Config.NL
+            r += '-- Tables:' + Config.NL
             for t in self.Tables:
                 r += f'--   {t}'
-                r += self.NewLine(1)
+                r += Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return ["_logical"]

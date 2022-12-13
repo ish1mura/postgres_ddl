@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from postgres_ddl.Comment import Comment
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
@@ -9,8 +10,8 @@ from postgres_ddl.System import ParseACL
 from postgres_ddl.TableIndex import TableIndex
 
 class View(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.IsMaterialized = data.get("is_materialized")
         self.IsMaterialized = self.IsMaterialized if self.IsMaterialized is not None else False
@@ -37,8 +38,7 @@ class View(DDL):
                 "instance_type" : "TABLE",
                 "instance_name" : self.GetFullName(),
                 "owner_name"    : data.get("owner_name")
-            },
-            self.Config
+            }
         )
 
         self.Comment = Comment(
@@ -47,27 +47,26 @@ class View(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "comment"       : data.get("comment")
-            },
-            self.Config
+            }
         )
 
         self.ColumnComments = []
         for comment in data.get("column_comments") or []:
             comment["instance_type"] = "COLUMN"
             comment["instance_name"] = ".".join([self.GetFullName(), comment.get("name")])
-            self.ColumnComments.append(Comment(self.GetObjectName(), comment, self.Config))
+            self.ColumnComments.append(Comment(self.GetObjectName(), comment))
 
         self.Grants = []
         for grant in ParseACL(data.get("acl"), self.Owner.Owner):
             grant["instance_type"] = "TABLE"
             grant["instance_name"] = self.GetFullName()
-            self.Grants.append(Grant(self.GetObjectName(), grant, self.Config))
+            self.Grants.append(Grant(self.GetObjectName(), grant))
 
         self.Indexes = []
         for idx in (data.get("indexes") or []):
             idx["schema"] = self.Schema
             idx["table"] = self.Name
-            idx = TableIndex(self.GetObjectName(), idx, self.Config)
+            idx = TableIndex(self.GetObjectName(), idx)
             self.Indexes.append(idx)
 
     def __str__(self):
@@ -93,38 +92,38 @@ class View(DDL):
 
     def DDL_Create(self):
         r = f"-- View: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
 
         if self.IsMaterialized:
             r += f"CREATE {self.GetTag()} {self.GetFullName()} AS"
         else:
             r += f"CREATE OR REPLACE {self.GetTag()} {self.GetFullName()} AS"
-        r += self.NewLine(1)
+        r += Config.NL
         r += self.Definition
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += self.Owner.DDL_Create()
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
 
         for grant in self.Grants:
             r += grant.DDL_Create()
-            r += self.NewLine(1)
-        r += self.NewLine(1)
+            r += Config.NL
+        r += Config.NL
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
-            r += self.NewLine(2)
+            r += Config.NL + Config.NL
 
         for comment in self.ColumnComments:
             r += comment.DDL_Create()
-            r += self.NewLine(2)
+            r += Config.NL + Config.NL
 
         for ind in sorted(self.Indexes, key=lambda x: x.GetFullName()):
-            r += ind.DDL_Create(f"{self.NewLine(1)}{self.Indent()}")
-            r += self.NewLine(2)
+            r += ind.DDL_Create(f"{Config.NL}{Config.Indent}")
+            r += Config.NL + Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return [self.Schema, "view"]

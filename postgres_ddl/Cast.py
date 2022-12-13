@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class Cast(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = data.get("oid")
         assert (self.Oid or 0) > 0, \
@@ -45,21 +46,21 @@ class Cast(DDL):
 
     def DDL_Create(self):
         r = f"-- Cast: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} ({self.GetFullName()})"
-        r += self.NewLine(1)
+        r += Config.NL
 
         if len(self.Func) > 0:
-            r += f"{self.Indent()}WITH FUNCTION {self.Func}"
+            r += f"{Config.Indent}WITH FUNCTION {self.Func}"
         else:
-            r += f"{self.Indent()}WITHOUT FUNCTION"
-        r += self.NewLine(1)
+            r += f"{Config.Indent}WITHOUT FUNCTION"
+        r += Config.NL
 
-        r += f"{self.Indent()}AS {self.Context}"
+        r += f"{Config.Indent}AS {self.Context}"
         r = r.strip() + ";"
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return ["_cast"]

@@ -5,8 +5,8 @@
 from postgres_ddl.DDL import DDL
 
 class Grant(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Type = (data.get("instance_type") or "").strip().upper()
         assert len(self.Type) > 0, \

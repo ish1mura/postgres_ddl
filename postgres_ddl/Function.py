@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from postgres_ddl.Comment import Comment
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
 from postgres_ddl.System import ParseACL
 
 class Function(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = (data.get("oid") or 0)
         assert self.Oid > 0, \
@@ -56,8 +57,7 @@ class Function(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.NameWithParams,
                 "owner_name"    : data.get("owner")
-            },
-            self.Config
+            }
         )
 
         self.Comment = Comment(
@@ -66,15 +66,14 @@ class Function(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.NameWithParams,
                 "comment"       : data.get("comment")
-            },
-            self.Config
+            }
         )
 
         self.Grants = []
         for grant in ParseACL(data.get("acl"), self.Owner.Owner):
             grant["instance_type"] = self.GetTag()
             grant["instance_name"] = self.NameWithParams
-            self.Grants.append(Grant(self.GetObjectName(), grant, self.Config))
+            self.Grants.append(Grant(self.GetObjectName(), grant))
 
     def __str__(self):
         return self.GetFullName()
@@ -99,58 +98,58 @@ class Function(DDL):
 
     def DDL_ArgsIn(self):
         if len(self.ArgsIn or "") == 0:
-            return "()" + self.NewLine(1)
+            return "()" + Config.NL
         else:
-            args = self.ArgsIn.replace(",", f",{self.NewLine(1)}   ")
+            args = self.ArgsIn.replace(",", f",{Config.NL}   ")
             r = ""
             r += "("
-            r += self.NewLine(1)
+            r += Config.NL
             r += f"    {args}"
-            r += self.NewLine(1)
+            r += Config.NL
             r += ")"
-            r += self.NewLine(1)
+            r += Config.NL
             return r
 
     def DDL_Create(self):
         r = f"-- Function: {self.Schema}.{self.Name}({self.ArgsInTypes})"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE OR REPLACE {self.GetTag()} {self.Schema}.{self.Name}"
         r += self.DDL_ArgsIn()
         r += f"RETURNS {self.ArgsOut} AS"
-        r += self.NewLine(1)
+        r += Config.NL
         r += "$BODY$"
-        r += self.NewLine(1)
+        r += Config.NL
         r += self.Code
-        r += self.NewLine(1)
+        r += Config.NL
         r += "$BODY$"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}LANGUAGE {self.Language} {self.Volatility}"
+        r += Config.NL
+        r += f"{Config.Indent}LANGUAGE {self.Language} {self.Volatility}"
 
         if self.Cost > 0:
-            r += self.NewLine(1)
-            r += f"{self.Indent()}COST {int(self.Cost)}"
+            r += Config.NL
+            r += f"{Config.Indent}COST {int(self.Cost)}"
 
         if self.Rows > 0:
-            r += self.NewLine(1)
-            r += f"{self.Indent()}ROWS {int(self.Rows)}"
+            r += Config.NL
+            r += f"{Config.Indent}ROWS {int(self.Rows)}"
 
         r += ";"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += self.Owner.DDL_Create()
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
 
         for grant in self.Grants:
             r += grant.DDL_Create()
-            r += self.NewLine(1)
-        r += self.NewLine(1)
+            r += Config.NL
+        r += Config.NL
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
-            r += self.NewLine(1)
+            r += Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return [self.Schema, "triggers" if self.IsTrigger else "functions"]

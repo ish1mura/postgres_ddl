@@ -1,11 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class Extension(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = data.get("oid")
         assert (self.Oid or 0) > 0, \
@@ -47,19 +48,19 @@ class Extension(DDL):
 
     def DDL_Create(self):
         r = f"-- Extension: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"SET ROLE {self.Owner};"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} {self.GetFullName()}"
-        r += self.NewLine(1)
-        r += f'{self.Indent()}SCHEMA "{self.Schema}"'
-        r += self.NewLine(1)
-        r += f'{self.Indent()}VERSION "{self.Version}"'
-        r += self.NewLine(1)
+        r += Config.NL
+        r += f'{Config.Indent}SCHEMA "{self.Schema}"'
+        r += Config.NL
+        r += f'{Config.Indent}VERSION "{self.Version}"'
+        r += Config.NL
         r = r.strip() + ";"
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return ["_extension"]

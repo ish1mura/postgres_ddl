@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Owner import Owner
 
 class EventTrigger(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = data.get("oid")
         assert (self.Oid or 0) > 0, \
@@ -36,8 +37,7 @@ class EventTrigger(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "owner_name"    : data.get("owner")
-            },
-            self.Config
+            }
         )
 
     def __str__(self):
@@ -60,25 +60,25 @@ class EventTrigger(DDL):
 
     def DDL_Create(self):
         r = f"-- Event trigger: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} {self.GetFullName()}"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}ON {self.Event}"
-        r += self.NewLine(1)
+        r += Config.NL
+        r += f"{Config.Indent}ON {self.Event}"
+        r += Config.NL
 
         if len(self.Tags) > 0:
             tags = ", ".join([f"'{i}'" for i in sorted(self.Tags)])
-            r += f"{self.Indent()}WHEN TAG IN ({tags})"
-            r += self.NewLine(1)
+            r += f"{Config.Indent}WHEN TAG IN ({tags})"
+            r += Config.NL
 
-        r += f"{self.Indent()}EXECUTE PROCEDURE {self.Function};"
-        r += self.NewLine(2)
+        r += f"{Config.Indent}EXECUTE PROCEDURE {self.Function};"
+        r += Config.NL + Config.NL
         r += self.Owner.DDL_Create()
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += self.DDL_Status()
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def DDL_Status(self):
         return f"ALTER {self.GetTag()} {self.GetFullName()} {self.Status};"

@@ -2,11 +2,12 @@
 # -*- coding: utf-8 -*-
 
 import re
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 
 class TableColumn(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Schema = (data.get("schema") or "").strip().lower()
         assert len(self.Schema) > 0, \
@@ -40,7 +41,7 @@ class TableColumn(DDL):
 
         self.Comment = data.get("comment")
         if self.Comment is not None:
-            self.Comment = re.sub("[\n\r]{1,}", self.NewLine(1), self.Comment, re.MULTILINE | re.IGNORECASE)
+            self.Comment = re.sub("[\n\r]{1,}", Config.NL, self.Comment, re.MULTILINE | re.IGNORECASE)
 
     def __str__(self):
         return self.GetFullName()
@@ -64,7 +65,7 @@ class TableColumn(DDL):
         r = f"ALTER TABLE {self.Schema}.{self.Table} ADD {self.GetTag()} {self.Name} {self.Type}{not_null}{dflt};"
 
         if self.Comment is not None and self.Comment.strip() != "":
-            r += self.NewLine(1)
+            r += Config.NL
             r += self.DDL_Comment()
 
         return r
@@ -86,7 +87,7 @@ class TableColumn(DDL):
 
     def DDL_Comment(self):
         if self.Comment is not None and self.Comment.strip() != "":
-            return f"COMMENT ON {self.GetTag()} {self.Schema}.{self.Table}.{self.Name}{self.NewLine(1)}{self.Indent()}IS '{self.Comment}';"
+            return f"COMMENT ON {self.GetTag()} {self.Schema}.{self.Table}.{self.Name}{Config.NL}{Config.Indent}IS '{self.Comment}';"
         return None
 
     def DDL_Type(self):
@@ -96,13 +97,13 @@ class TableColumn(DDL):
         if not add_comma:
             add_comma = not self.IsLast
 
-        return f"{self.Indent()}%s %s%s%s%s%s" % (
+        return f"{Config.Indent}%s %s%s%s%s%s" % (
             self.Name,
             self.Type,
             "" if not self.NotNull else " NOT NULL",
             "" if len(self.DefaultValue) <= 0 else " DEFAULT " + self.DefaultValue,
             "" if not add_comma else ",",
-            "" if not add_comment or self.Comment is None else f" -- %s" % (self.Comment.replace(self.NewLine(1), " "))
+            "" if not add_comment or self.Comment is None else f" -- %s" % (self.Comment.replace(Config.NL, " "))
         )
 
     def Diff(self, another):

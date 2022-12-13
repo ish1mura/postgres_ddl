@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 from postgres_ddl.Comment import Comment
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
@@ -13,8 +14,8 @@ from postgres_ddl.TableSettings import TableSettings
 from postgres_ddl.TableTrigger import TableTrigger
 
 class Table(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = (data.get("oid") or 0)
         assert self.Oid > 0, \
@@ -34,7 +35,7 @@ class Table(DDL):
                 "schema"    : self.Schema,
                 "table"     : self.Name,
                 "setting"   : o
-            }, self.Config))
+            }))
 
         self.HasOids = (data.get("has_oids") or "").strip()
         assert len(self.HasOids) > 0, \
@@ -45,7 +46,7 @@ class Table(DDL):
             "schema"    : self.Schema,
             "table"     : self.Name,
             "setting"   : self.HasOids
-        }, self.Config))
+        }))
 
         self.Inherits = (data.get("parent_table") or "").strip()
 
@@ -69,8 +70,7 @@ class Table(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "owner_name"    : data.get("owner")
-            },
-            self.Config
+            }
         )
 
         self.Comment = Comment(
@@ -79,42 +79,41 @@ class Table(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "comment"       : data.get("comment")
-            },
-            self.Config
+            }
         )
 
         self.Grants = []
         for grant in ParseACL(data.get("acl"), self.Owner.Owner):
             grant["instance_type"] = self.GetTag()
             grant["instance_name"] = self.GetFullName()
-            self.Grants.append(Grant(self.GetObjectName(), grant, self.Config))
+            self.Grants.append(Grant(self.GetObjectName(), grant))
 
         self.Columns = []
         for column in (data.get("columns") or []):
             column["schema"] = self.Schema
             column["table"] = self.Name
-            column = TableColumn(self.GetObjectName(), column, self.Config)
+            column = TableColumn(self.GetObjectName(), column)
             self.Columns.append(column)
 
         self.Constraints = []
         for cons in (data.get("constraints") or []):
             cons["schema"] = self.Schema
             cons["table"] = self.Name
-            cons = TableConstraint(self.GetObjectName(), cons, self.Config)
+            cons = TableConstraint(self.GetObjectName(), cons)
             self.Constraints.append(cons)
 
         self.Indexes = []
         for idx in (data.get("indexes") or []):
             idx["schema"] = self.Schema
             idx["table"] = self.Name
-            idx = TableIndex(self.GetObjectName(), idx, self.Config)
+            idx = TableIndex(self.GetObjectName(), idx)
             self.Indexes.append(idx)
 
         self.Triggers = []
         for trg in (data.get("triggers") or []):
             trg["schema"] = self.Schema
             trg["table"] = self.Name
-            trg = TableTrigger(self.GetObjectName(), trg, self.Config)
+            trg = TableTrigger(self.GetObjectName(), trg)
             self.Triggers.append(trg)
 
     def __str__(self):
@@ -141,84 +140,84 @@ class Table(DDL):
         for sts in sorted(self.Settings, key=lambda x: x.GetFullName()):
             r.append(sts.DDL_Inner())
 
-        return (f",{self.NewLine(1)}").join(r)
+        return (f",{Config.NL}").join(r)
 
     def DDL_Create(self):
         is_last_comma = len(self.Constraints) > 0
 
         r = f"-- Table: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} {self.GetFullName()}("
-        r += self.NewLine(1)
+        r += Config.NL
 
         for col in sorted(self.Columns, key=lambda x: x.OrderNum):
             r += col.DDL_Inner(add_comma=is_last_comma, add_comment=True)
-            r += self.NewLine(1)
+            r += Config.NL
 
         self.Constraints = sorted(self.Constraints, key=lambda x: x.SortKey)
         if len(self.Constraints) > 0:
             cns = [c.DDL_Inner() for c in self.Constraints]
-            cns_NL = f",{self.NewLine(1)}"
+            cns_NL = f",{Config.NL}"
             r += cns_NL.join(cns)
-            r += self.NewLine(1)
+            r += Config.NL
 
         r += ")"
-        r += self.NewLine(1)
+        r += Config.NL
 
         if self.PartKey is not None:
             r += f"PARTITION BY {self.PartKey}"
-            r += self.NewLine(1)
+            r += Config.NL
 
         if self.Inherits is not None:
             if self.PartBorder is not None:
                 r += f"PARTITION OF {self.Inherits}"
-                r += self.NewLine(1)
+                r += Config.NL
             else:
                 r += f"INHERITS ( {self.Inherits} )"
-                r += self.NewLine(1)
+                r += Config.NL
 
         if self.PartBorder is not None:
             r += self.PartBorder
-            r += self.NewLine(1)
+            r += Config.NL
 
         r += "WITH ("
-        r += self.NewLine(1)
+        r += Config.NL
         r += self.DDL_Settings()
-        r += self.NewLine(1)
+        r += Config.NL
         r += ");"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += self.Owner.DDL_Create()
-        r += self.NewLine(1)
+        r += Config.NL
 
         if len(self.Grants) > 0:
-            r += self.NewLine(1)
+            r += Config.NL
             for grant in self.Grants:
                 r += grant.DDL_Create()
-                r += self.NewLine(1)
-        r += self.NewLine(1)
+                r += Config.NL
+        r += Config.NL
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
-            r += self.NewLine(2)
+            r += Config.NL + Config.NL
 
         for col in self.Columns:
             cmt = col.DDL_Comment()
             if cmt is not None:
                 r += col.DDL_Comment()
-                r += self.NewLine(1)
-        r += self.NewLine(1)
+                r += Config.NL
+        r += Config.NL
 
         for ind in sorted(self.Indexes, key=lambda x: x.GetFullName()):
-            r += ind.DDL_Create(f"{self.NewLine(1)}{self.Indent()}")
-            r += self.NewLine(2)
+            r += ind.DDL_Create(f"{Config.NL}{Config.Indent}")
+            r += Config.NL + Config.NL
 
         for trg in sorted(self.Triggers, key=lambda x: x.GetFullName()):
             r += trg.DDL_Create()
-            r += self.NewLine(2)
+            r += Config.NL + Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return [self.Schema, "table"]

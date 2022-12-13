@@ -2,14 +2,15 @@
 # -*- coding: utf-8 -*-
 
 from postgres_ddl.Comment import Comment
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
 from postgres_ddl.System import ParseACL
 
 class ForeignServer(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Schema = "_foreign"
 
@@ -29,8 +30,7 @@ class ForeignServer(DDL):
                 "instance_type" : "SERVER",
                 "instance_name" : self.Name,
                 "owner_name"    : data.get("owner_name")
-            },
-            self.Config
+            }
         )
 
         self.Comment = Comment(
@@ -39,15 +39,14 @@ class ForeignServer(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.Name,
                 "comment"       : data.get("comment")
-            },
-            self.Config
+            }
         )
 
         self.Grants = []
         for grant in ParseACL(data.get("acl"), self.Owner.Owner):
             grant["instance_type"] = self.GetTag()
             grant["instance_name"] = self.Name
-            self.Grants.append(Grant(self.GetObjectName(), grant, self.Config))
+            self.Grants.append(Grant(self.GetObjectName(), grant))
 
     def __str__(self):
         return self.Name
@@ -66,32 +65,32 @@ class ForeignServer(DDL):
 
     def DDL_Create(self):
         r = f"-- Server: {self.Name}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE SERVER {self.Name}"
-        r += self.NewLine(1)
+        r += Config.NL
         r += f"FOREIGN DATA WRAPPER {self.FDW}"
-        r += self.NewLine(1)
+        r += Config.NL
         r += "OPTIONS("
-        r += self.NewLine(1)
+        r += Config.NL
         r += self.DDL_Options()
-        r += self.NewLine(1)
+        r += Config.NL
         r += ");"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += self.Owner.DDL_Create()
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
 
         for grant in self.Grants:
             r += grant.DDL_Create()
-            r += self.NewLine(1)
-        r += self.NewLine(1)
+            r += Config.NL
+        r += Config.NL
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
-            r += self.NewLine(1)
+            r += Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def DDL_Options(self):
         result = []
@@ -100,9 +99,9 @@ class ForeignServer(DDL):
             o = o.split("=")
             if len(o) != 2:
                 continue
-            result.append(f"{self.Indent()}{o[0]} = '{o[1]}'")
+            result.append(f"{Config.Indent}{o[0]} = '{o[1]}'")
 
-        return f",{self.NewLine(1)}".join(result)
+        return f",{Config.NL}".join(result)
 
     def GetPath(self):
         return [self.Schema]

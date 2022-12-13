@@ -8,6 +8,7 @@ from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
 from psycopg2.extras import RealDictCursor
 
 from postgres_ddl.Cast import Cast
+from postgres_ddl.Config import Config
 from postgres_ddl.EventTrigger import EventTrigger
 from postgres_ddl.Extension import Extension
 from postgres_ddl.ForeignServer import ForeignServer
@@ -23,11 +24,10 @@ from postgres_ddl.Table import Table
 from postgres_ddl.View import View
 
 class Database():
-    def __init__(self, connect, config, exclude_schemas=[]):
+    def __init__(self, connect, exclude_schemas=[]):
         """
             Database object
             @param connect: Connection params
-            @param config: Configuration
             @param exclude_schemas: Excluded schemas (namespaces)
         """
         self.Connect        = self.GetConnectionString(connect)
@@ -35,7 +35,6 @@ class Database():
         self.Version        = None
         self.Objects        = {}
         self.ExcludeSchemas = exclude_schemas
-        self.Config         = config
 
     def __str__(self):
         """
@@ -143,7 +142,7 @@ class Database():
         """, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
-            self.Objects.update(Namespace(None, row, self.Config).Export())
+            self.Objects.update(Namespace(None, row).Export())
 
         logging.info("Namespaces loaded = {0}".format(cursor.rowcount))
 
@@ -390,7 +389,7 @@ class Database():
         cursor.execute(query, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
-            self.Objects.update(Table(None, row, self.Config).Export())
+            self.Objects.update(Table(None, row).Export())
 
         logging.info("Tables loaded = {0}".format(cursor.rowcount))
 
@@ -444,12 +443,12 @@ class Database():
             where p.prokind in ('f')
             order by 1
         """, {
-            "indent": self.Config.Indent,
+            "indent": Config.Indent,
             "exclude_schemas": self.ExcludeSchemas
         })
 
         for row in cursor.fetchall():
-            self.Objects.update(Function(None, row, self.Config).Export())
+            self.Objects.update(Function(None, row).Export())
 
         logging.info("Functions loaded = {0}".format(cursor.rowcount))
 
@@ -485,7 +484,7 @@ class Database():
         """, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
-            self.Objects.update(Procedure(None, row, self.Config).Export())
+            self.Objects.update(Procedure(None, row).Export())
 
         logging.info("Procedures loaded = {0}".format(cursor.rowcount))
 
@@ -554,7 +553,7 @@ class Database():
 
         cursor.execute(query, [self.ExcludeSchemas])
         for row in cursor.fetchall():
-            self.Objects.update(View(None, row, self.Config).Export())
+            self.Objects.update(View(None, row).Export())
 
         logging.info("Views loaded = {0}".format(cursor.rowcount))
 
@@ -590,7 +589,7 @@ class Database():
         """, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
-            self.Objects.update(Sequence(None, row, self.Config).Export())
+            self.Objects.update(Sequence(None, row).Export())
 
         logging.info("Sequences loaded = {0}".format(cursor.rowcount))
 
@@ -613,7 +612,7 @@ class Database():
         """, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
-            self.Objects.update(ForeignServer(None, row, self.Config).Export())
+            self.Objects.update(ForeignServer(None, row).Export())
 
         logging.info("Foreign servers loaded = {0}".format(cursor.rowcount))
 
@@ -663,7 +662,7 @@ class Database():
         """, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
-            self.Objects.update(ForeignTable(None, row, self.Config).Export())
+            self.Objects.update(ForeignTable(None, row).Export())
 
         logging.info("Foreign tables loaded = {0}".format(cursor.rowcount))
 
@@ -684,7 +683,7 @@ class Database():
         """)
 
         for row in cursor.fetchall():
-            self.Objects.update(Extension(None, row, self.Config).Export())
+            self.Objects.update(Extension(None, row).Export())
 
         logging.info("Extensions loaded = {0}".format(cursor.rowcount))
 
@@ -723,7 +722,7 @@ class Database():
 
         cursor.execute(query)
         for row in cursor.fetchall():
-            self.Objects.update(Publication(None, row, self.Config).Export())
+            self.Objects.update(Publication(None, row).Export())
 
         logging.info("Publications loaded = {0}".format(cursor.rowcount))
 
@@ -762,7 +761,7 @@ class Database():
         """)
 
         for row in cursor.fetchall():
-            self.Objects.update(Subscription(None, row, self.Config).Export())
+            self.Objects.update(Subscription(None, row).Export())
 
         logging.info("Subscriptions loaded = {0}".format(cursor.rowcount))
 
@@ -792,7 +791,7 @@ class Database():
         """)
 
         for row in cursor.fetchall():
-            self.Objects.update(EventTrigger(None, row, self.Config).Export())
+            self.Objects.update(EventTrigger(None, row).Export())
 
         logging.info("Event triggers loaded = {0}".format(cursor.rowcount))
 
@@ -825,6 +824,6 @@ class Database():
         """)
 
         for row in cursor.fetchall():
-            self.Objects.update(Cast(None, row, self.Config).Export())
+            self.Objects.update(Cast(None, row).Export())
 
         logging.info("Casts loaded = {0}".format(cursor.rowcount))

@@ -1,12 +1,13 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Owner import Owner
 
 class Publication(DDL):
-    def __init__(self, parent, data, config):
-        super().__init__(parent, data, config)
+    def __init__(self, parent, data):
+        super().__init__(parent, data)
 
         self.Oid = data.get("oid")
         assert (self.Oid or 0) > 0, \
@@ -33,8 +34,7 @@ class Publication(DDL):
                 "instance_type" : self.GetTag(),
                 "instance_name" : self.GetFullName(),
                 "owner_name"    : data.get("owner")
-            },
-            self.Config
+            }
         )
 
     def __str__(self):
@@ -57,31 +57,31 @@ class Publication(DDL):
 
     def DDL_Create(self):
         r = f"-- Publication: {self.GetFullName()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"-- {self.DDL_Drop()}"
-        r += self.NewLine(2)
+        r += Config.NL + Config.NL
         r += f"CREATE {self.GetTag()} {self.GetFullName()}"
 
         if self.IsAllTables:
             r += f" FOR ALL TABLES"
         else:
             r += f" FOR TABLE"
-            r += self.NewLine(1)
-            r += f",{self.NewLine(1)}".join([f"{self.Indent()}{t}" for t in self.Tables])
-        r += self.NewLine(1)
+            r += Config.NL
+            r += f",{Config.NL}".join([f"{Config.Indent}{t}" for t in self.Tables])
+        r += Config.NL
 
         r += "WITH ("
-        r += self.NewLine(1)
-        r += f"{self.Indent()}publish = '{self.Actions}',"
-        r += self.NewLine(1)
-        r += f"{self.Indent()}publish_via_partition_root = {str(self.IsViaRoot).upper()}"
-        r += self.NewLine(1)
+        r += Config.NL
+        r += f"{Config.Indent}publish = '{self.Actions}',"
+        r += Config.NL
+        r += f"{Config.Indent}publish_via_partition_root = {str(self.IsViaRoot).upper()}"
+        r += Config.NL
         r += ");"
 
-        r += self.NewLine(2)
-        r += self.Owner.DDL_Create() + self.NewLine(1)
+        r += Config.NL + Config.NL
+        r += self.Owner.DDL_Create() + Config.NL
 
-        return r.strip() + self.NewLine(1)
+        return r.strip() + Config.NL
 
     def GetPath(self):
         return ["_logical"]

@@ -23,7 +23,7 @@ class Grabber():
 
         SetupLogging(config)
 
-        self.Config = Config(config)
+        Config.Parse(config)
 
     def NonSuperUserUndo(self):
         """
@@ -42,7 +42,7 @@ class Grabber():
             wf.write(file.get("data"))
 
     def Run(self):
-        database = Database(connect=self.Connect, exclude_schemas=self.ExcludeSchemas, config=self.Config)
+        database = Database(connect=self.Connect, exclude_schemas=self.ExcludeSchemas)
         database.Parse()
 
         if os.path.exists(self.Path):
