@@ -10,6 +10,7 @@ from postgres_ddl.System import ParseACL
 from postgres_ddl.TableColumn import TableColumn
 from postgres_ddl.TableConstraint import TableConstraint
 from postgres_ddl.TableIndex import TableIndex
+from postgres_ddl.TableSequence import TableSequence
 from postgres_ddl.TableSettings import TableSettings
 from postgres_ddl.TableTrigger import TableTrigger
 
@@ -116,6 +117,10 @@ class Table(DDL):
             trg = TableTrigger(self.GetObjectName(), trg)
             self.Triggers.append(trg)
 
+        self.Sequence = None
+        if data.get("sequence") is not None:
+            self.Sequence = TableSequence(self.GetFullName(), data.get("sequence") or [])
+
     def __str__(self):
         return self.GetFullName()
 
@@ -208,6 +213,10 @@ class Table(DDL):
                 r += col.DDL_Comment()
                 r += Config.NL
         r += Config.NL
+
+        if Config.IsSeqGrantsInTable and self.Sequence is not None:
+            r += self.Sequence.DDL_Create()
+            r += Config.NL
 
         for ind in sorted(self.Indexes, key=lambda x: x.GetFullName()):
             r += ind.DDL_Create(f"{Config.NL}{Config.Indent}")
