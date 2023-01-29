@@ -168,7 +168,8 @@ class Database():
                     &columns&,
                     &constraints&,
                     &indexes&,
-                    &triggers&
+                    &triggers&,
+                    &sequence&
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -207,7 +208,8 @@ class Database():
                     &columns&,
                     &constraints&,
                     &indexes&,
-                    &triggers&
+                    &triggers&,
+                    &sequence&
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -246,7 +248,8 @@ class Database():
                     &columns&,
                     &constraints&,
                     &indexes&,
-                    &triggers&
+                    &triggers&,
+                    &sequence&
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -384,6 +387,29 @@ class Database():
                                 not tr.tgisinternal
                         ) q
                     ) as triggers
+        """)
+
+        query = query.replace("&sequence&", """
+                    (
+                        select row_to_json(q) from (
+                            select
+                                n.nspname as schema,
+                                s.relname as name,
+                                s.relacl AS acl,
+                                o.rolname as owner,
+                                trim(coalesce(obj_description(s.oid, 'pg_class'), '')) AS comment
+                            from pg_depend d
+                            join pg_class s on
+                                s.oid = d.objid and
+                                s.relkind = 'S'
+                            join pg_namespace n on
+                                n.oid = s.relnamespace
+                            JOIN pg_roles o ON
+                                o.oid = s.relowner
+                            where d.refobjid = c.oid
+                            limit 1
+                        ) q
+                    ) as sequence
         """)
 
         cursor.execute(query, [self.ExcludeSchemas])
