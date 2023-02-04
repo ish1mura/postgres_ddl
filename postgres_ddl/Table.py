@@ -10,6 +10,7 @@ from postgres_ddl.System import ParseACL
 from postgres_ddl.TableColumn import TableColumn
 from postgres_ddl.TableConstraint import TableConstraint
 from postgres_ddl.TableIndex import TableIndex
+from postgres_ddl.TablePolicy import TablePolicy
 from postgres_ddl.TableSequence import TableSequence
 from postgres_ddl.TableSettings import TableSettings
 from postgres_ddl.TableTrigger import TableTrigger
@@ -121,6 +122,13 @@ class Table(DDL):
         if data.get("sequence") is not None:
             self.Sequence = TableSequence(self.GetFullName(), data.get("sequence") or [])
 
+        self.Policies = []
+        for plc in (data.get("policies") or []):
+            plc["schema"] = self.Schema
+            plc["table"] = self.Name
+            plc = TablePolicy(self.GetObjectName(), plc)
+            self.Policies.append(plc)
+
     def __str__(self):
         return self.GetFullName()
 
@@ -226,6 +234,10 @@ class Table(DDL):
             r += trg.DDL_Create()
             r += Config.NL + Config.NL
 
+        for plc in sorted(self.Policies, key=lambda x: x.GetFullName()):
+            r += plc.DDL_Create()
+            r += Config.NL + Config.NL
+
         return r.strip() + Config.NL
 
     def GetPath(self):
@@ -250,5 +262,7 @@ class Table(DDL):
         for v in self.Indexes:
             result[v.GetObjectName()] = v
         for v in self.Triggers:
+            result[v.GetObjectName()] = v
+        for v in self.Policies:
             result[v.GetObjectName()] = v
         return result

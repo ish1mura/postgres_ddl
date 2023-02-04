@@ -169,7 +169,8 @@ class Database():
                     &constraints&,
                     &indexes&,
                     &triggers&,
-                    &sequence&
+                    &sequence&,
+                    &policy&
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -209,7 +210,8 @@ class Database():
                     &constraints&,
                     &indexes&,
                     &triggers&,
-                    &sequence&
+                    &sequence&,
+                    &policy&
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -228,7 +230,7 @@ class Database():
                     n.nspname != ALL(%s)
                 ORDER BY 2,3
             """
-        elif self.Version in (12,13,14):
+        elif self.Version in (12,13,14,15,16):
             query = """
                 SELECT
                     c.oid,
@@ -249,7 +251,8 @@ class Database():
                     &constraints&,
                     &indexes&,
                     &triggers&,
-                    &sequence&
+                    &sequence&,
+                    &policy&
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -410,6 +413,36 @@ class Database():
                             limit 1
                         ) q
                     ) as sequence
+        """)
+
+        query = query.replace("&policy&", """
+                    (
+                        select jsonb_agg(q order by q.name) from (
+                            select
+                                plc.polname as name,
+                                case trim(lower(plc.polcmd))
+                                    when 'r' then 'SELECT'
+                                    when 'a' then 'INSERT'
+                                    when 'w' then 'UPDATE'
+                                    when 'd' then 'DELETE'
+                                    else 'ALL'
+                                end as command,
+                                case when plc.polpermissive then 'PERMISSIVE' else 'RESTRICTIVE' end as type,
+                                pg_get_expr(plc.polqual, plc.polrelid) as expr_using,
+                                pg_get_expr(plc.polwithcheck, plc.polrelid) as expr_with_check,
+                                (
+                                    select array_agg(distinct trim(lower(coalesce(plcrr.rolname, 'public'))))
+                                    from unnest(plc.polroles) plcr
+                                    left join pg_roles plcrr on
+                                        plcrr.oid = plcr
+                                ) as roles
+                            from pg_policy plc
+                            where
+                                plc.polrelid = c.oid and
+                                (plc.polqual is not null or plc.polwithcheck is not null)
+                            order by 1
+                        ) q
+                    ) as policies
         """)
 
         cursor.execute(query, [self.ExcludeSchemas])
