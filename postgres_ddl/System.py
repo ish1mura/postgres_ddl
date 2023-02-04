@@ -110,6 +110,12 @@ def ParseACL(acl, owner):
 
     return result
 
+def ParseOptions(opt):
+    eq_idx = opt.find("=")
+    if eq_idx < 0 or eq_idx+1 == len(opt):
+        return None
+    return f"{opt[:eq_idx]} '{opt[eq_idx+1:]}'"
+
 def CalcDuration(fnc):
     def wrapper(*args):
         time_start = default_timer()

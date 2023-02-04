@@ -629,7 +629,14 @@ class Database():
                 o.rolname as owner_name,
                 s.srvoptions as options,
                 s.srvacl::varchar[] AS acl,
-                obj_description(s.oid, 'pg_foreign_server') AS comment
+                obj_description(s.oid, 'pg_foreign_server') AS comment,
+                (
+                    select jsonb_object_agg(coalesce(umr.rolname, 'public'), um.umoptions)
+                    from pg_user_mapping um
+                    left join pg_roles umr on
+                        umr.oid = um.umuser
+                    where um.umserver = s.oid
+                ) as user_mappings
             from pg_foreign_server s
             join pg_roles o on
                 o.oid = s.srvowner
