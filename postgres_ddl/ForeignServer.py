@@ -101,7 +101,7 @@ class ForeignServer(DDL):
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
-            r += Config.NL
+            r += Config.NL + Config.NL
 
         for um in sorted(self.UserMappings, key=lambda x: x.Role):
             r += um.DDL_Create()

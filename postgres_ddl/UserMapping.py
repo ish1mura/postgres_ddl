@@ -44,7 +44,7 @@ class UserMapping(DDL):
         result = []
 
         for o in self.Options:
-            o = ParseOptions(o)
+            o = ParseOptions(o, ["password"])
             if o is not None:
                 result.append(o)
 
