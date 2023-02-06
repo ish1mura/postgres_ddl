@@ -29,16 +29,16 @@ class UserMapping(DDL):
         return "user_mapping"
 
     def GetObjectName(self):
-        return f"{self.GetObjectType()}_{self.Type}_{self.Instance}_{self.Role}"
+        return f"{self.GetObjectType()}_{self.Instance}_{self.Role}"
 
     def GetTag(self):
         return "USER MAPPING"
 
     def DDL_Create(self):
-        return f"CREATE {self.GetTag()} FOR {self.Role} SERVER {self.Instance} OPTIONS({self.DDL_Options()});"
+        return f"CREATE {self.GetTag()} FOR {self.Role} {self.Type} {self.Instance} OPTIONS({self.DDL_Options()});"
 
     def DDL_Drop(self):
-        return f"DROP {self.GetTag()} IF EXISTS FOR {self.Role} SERVER {self.Instance};"
+        return f"DROP {self.GetTag()} IF EXISTS FOR {self.Role} {self.Type} {self.Instance};"
 
     def DDL_Options(self):
         result = []

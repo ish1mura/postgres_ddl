@@ -54,7 +54,7 @@ class ForeignServer(DDL):
             self.UserMappings.append(UserMapping(
                 self.GetObjectName(),
                 {
-                    "instance_type" : self.GetTag(),
+                    "instance_type" : "SERVER",
                     "instance_name" : self.Name,
                     "role"          : role,
                     "options"       : options
