@@ -110,6 +110,23 @@ def ParseACL(acl, owner):
 
     return result
 
+def ParseOptions(opt, exclude_extra=[]):
+    exclude_names = [""] + exclude_extra
+
+    eq_idx = opt.find("=")
+    if eq_idx < 0 or eq_idx+1 == len(opt):
+        return None
+
+    name = (opt[:eq_idx] or "").strip()
+    if name.lower() in exclude_names:
+        return None
+
+    value = (opt[eq_idx+1:] or "").strip()
+    if len(value) <= 0:
+        return None
+
+    return f"{name} '{value}'"
+
 def CalcDuration(fnc):
     def wrapper(*args):
         time_start = default_timer()

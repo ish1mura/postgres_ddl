@@ -6,7 +6,8 @@ from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
-from postgres_ddl.System import ParseACL
+from postgres_ddl.System import ParseACL, ParseOptions
+from postgres_ddl.UserMapping import UserMapping
 
 class ForeignServer(DDL):
     def __init__(self, parent, data):
@@ -36,7 +37,7 @@ class ForeignServer(DDL):
         self.Comment = Comment(
             self.GetObjectName(),
             {
-                "instance_type" : self.GetTag(),
+                "instance_type" : "SERVER",
                 "instance_name" : self.Name,
                 "comment"       : data.get("comment")
             }
@@ -47,6 +48,18 @@ class ForeignServer(DDL):
             grant["instance_type"] = self.GetTag()
             grant["instance_name"] = self.Name
             self.Grants.append(Grant(self.GetObjectName(), grant))
+
+        self.UserMappings = []
+        for role, options in (data.get("user_mappings") or {}).items():
+            self.UserMappings.append(UserMapping(
+                self.GetObjectName(),
+                {
+                    "instance_type" : "SERVER",
+                    "instance_name" : self.Name,
+                    "role"          : role,
+                    "options"       : options
+                }
+            ))
 
     def __str__(self):
         return self.Name
@@ -88,6 +101,10 @@ class ForeignServer(DDL):
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
+            r += Config.NL + Config.NL
+
+        for um in sorted(self.UserMappings, key=lambda x: x.Role):
+            r += um.DDL_Create()
             r += Config.NL
 
         return r.strip() + Config.NL
@@ -96,12 +113,11 @@ class ForeignServer(DDL):
         result = []
 
         for o in sorted(self.Options):
-            o = o.split("=")
-            if len(o) != 2:
-                continue
-            result.append(f"{Config.Indent}{o[0]} = '{o[1]}'")
+            o = ParseOptions(o)
+            if o is not None:
+                result.append(f"{Config.Indent}{o}")
 
-        return f",{Config.NL}".join(result)
+        return f",{Config.NL}".join(sorted(result))
 
     def GetPath(self):
         return [self.Schema]
