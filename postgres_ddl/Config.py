@@ -13,3 +13,4 @@ class Config():
 
         style = json.get("style") or []
         Config.IsSeqGrantsInTable = "seq_grants_in_table" in style
+        Config.IsHideUserMappings = "hide_user_mappings" in style

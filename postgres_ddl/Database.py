@@ -654,7 +654,7 @@ class Database():
 
     @CalcDuration
     def GetForeignServer(self, cursor):
-        cursor.execute("""
+        query = """
             select
                 s.oid,
                 s.srvname as server_name,
@@ -663,19 +663,28 @@ class Database():
                 s.srvoptions as options,
                 s.srvacl::varchar[] AS acl,
                 obj_description(s.oid, 'pg_foreign_server') AS comment,
+                &user_mappings& as user_mappings
+            from pg_foreign_server s
+            join pg_roles o on
+                o.oid = s.srvowner
+            join pg_foreign_data_wrapper w on
+                w.oid = s.srvfdw
+        """
+
+        if self.IsSuperUser and not Config.IsHideUserMappings:
+            query = query.replace("&user_mappings&", """
                 (
                     select jsonb_object_agg(coalesce(umr.rolname, 'public'), um.umoptions)
                     from pg_user_mapping um
                     left join pg_roles umr on
                         umr.oid = um.umuser
                     where um.umserver = s.oid
-                ) as user_mappings
-            from pg_foreign_server s
-            join pg_roles o on
-                o.oid = s.srvowner
-            join pg_foreign_data_wrapper w on
-                w.oid = s.srvfdw
-        """, [self.ExcludeSchemas])
+                )""")
+        else:
+            query = query.replace("&user_mappings&", """
+                null::jsonb""")
+
+        cursor.execute(query, [self.ExcludeSchemas])
 
         for row in cursor.fetchall():
             self.Objects.update(ForeignServer(None, row).Export())
