@@ -130,8 +130,9 @@ def ParseOptions(opt, exclude_extra=[]):
 def CalcDuration(fnc):
     def wrapper(*args):
         time_start = default_timer()
-        fnc(*args)
+        result = fnc(*args)
         logging.info("{0} duration = {1} sec".format(fnc.__name__, round(default_timer() - time_start, 2)))
+        return result
     return wrapper
 
 def SetupLogging(config):
