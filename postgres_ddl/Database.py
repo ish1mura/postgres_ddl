@@ -144,7 +144,217 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Namespace(None, row).Export())
 
-        logging.info("Namespaces loaded = {0}".format(cursor.rowcount))
+        logging.info("GetNamespace loaded = {0}".format(cursor.rowcount))
+
+    @CalcDuration
+    def GetTableColumn(self, cursor):
+        result = {}
+        cursor.execute("""
+            select
+                a.attrelid as table_oid,
+                trim(lower(a.attname)) as name,
+                trim(lower(format_type(a.atttypid, a.atttypmod))) as type,
+                a.attnotnull as not_null,
+                pg_get_expr(ad.adbin, ad.adrelid) as default_value,
+                trim(d.description) as comment,
+                a.attnum as order_num,
+                max(a.attnum) over (partition by a.attrelid) as max_order_num
+            from pg_attribute a
+            left join pg_attrdef ad on
+                a.atthasdef and
+                ad.adrelid = a.attrelid and
+                ad.adnum = a.attnum
+            left join pg_description d on
+                d.objoid = a.attrelid and
+                d.objsubid = a.attnum
+            where
+                a.attnum > 0 and
+                not a.attisdropped
+        """, [self.ExcludeSchemas])
+        for row in cursor.fetchall():
+            table_oid = row.get("table_oid") or 0
+            if table_oid not in result.keys():
+                result[table_oid] = []
+            result.get(table_oid).append(row)
+
+        logging.info("GetTableColumn loaded = {0}".format(cursor.rowcount))
+
+        return result
+
+    @CalcDuration
+    def GetTableConstraint(self, cursor):
+        result = {}
+        cursor.execute("""
+            select
+                co.conrelid as table_oid,
+                trim(lower(co.conname)) as name,
+                trim(lower(co.contype)) as type,
+                case trim(lower(co.contype))
+                    when 'p' then 1
+                    when 'u' then 2
+                    when 'c' then 3
+                    when 'f' then 4
+                    else          5
+                end::integer as order_num,
+                pg_get_constraintdef(co.oid) as definition,
+                case trim(lower(co.confupdtype))
+                    when 'a' then 'ON UPDATE NO ACTION'
+                    when 'r' then 'ON UPDATE RESTRICT'
+                    when 'c' then 'ON UPDATE CASCADE'
+                    when 'n' then 'ON UPDATE SET NULL'
+                    when 'd' then 'ON UPDATE SET DEFAULT'
+                end as update_action,
+                case trim(lower(co.confdeltype))
+                    when 'a' then 'ON DELETE NO ACTION'
+                    when 'r' then 'ON DELETE RESTRICT'
+                    when 'c' then 'ON DELETE CASCADE'
+                    when 'n' then 'ON DELETE SET NULL'
+                    when 'd' then 'ON DELETE SET DEFAULT'
+                end as delete_action,
+                case trim(lower(co.confmatchtype))
+                    when 'f' then 'MATCH FULL'
+                    when 'p' then 'MATCH PARTIAL'
+                    when 'u' then 'MATCH SIMPLE'
+                    when 's' then 'MATCH SIMPLE'
+                end as match_action,
+                case
+                    when trim(lower(co.contype)) != 'f' then ''
+                    when co.condeferrable and co.condeferred then
+                        'DEFERRABLE INITIALLY DEFERRED'
+                    when co.condeferrable and not co.condeferred then
+                        'DEFERRABLE INITIALLY IMMEDIATE'
+                    else
+                        'NOT DEFERRABLE'
+                end as deferrable_type
+            from pg_constraint co
+            where co.conislocal
+        """, [self.ExcludeSchemas])
+        for row in cursor.fetchall():
+            table_oid = row.get("table_oid") or 0
+            if table_oid not in result.keys():
+                result[table_oid] = []
+            result.get(table_oid).append(row)
+
+        logging.info("GetTableConstraint loaded = {0}".format(cursor.rowcount))
+
+        return result
+
+    @CalcDuration
+    def GetTableIndex(self, cursor):
+        result = {}
+        cursor.execute("""
+            select
+                i.indrelid as table_oid,
+                trim(lower(ic.relname)) as name,
+                pg_get_indexdef(i.indexrelid, 0, true) as definition
+            from pg_index i
+            join pg_class ic on
+                ic.oid = i.indexrelid
+            where
+                not i.indisprimary and
+                not exists(
+                    select 1
+                    from pg_constraint co
+                    where co.conindid = ic.oid
+                )
+        """, [self.ExcludeSchemas])
+        for row in cursor.fetchall():
+            table_oid = row.get("table_oid") or 0
+            if table_oid not in result.keys():
+                result[table_oid] = []
+            result.get(table_oid).append(row)
+
+        logging.info("GetTableIndex loaded = {0}".format(cursor.rowcount))
+
+        return result
+
+    @CalcDuration
+    def GetTableTrigger(self, cursor):
+        result = {}
+        cursor.execute("""
+            select
+                tr.tgrelid as table_oid,
+                trim(lower(tr.tgname)) as name,
+                tr.tgenabled = 'D' as is_disabled,
+                pg_get_triggerdef(tr.oid) as definition
+            from pg_trigger tr
+            where not tr.tgisinternal
+        """, [self.ExcludeSchemas])
+        for row in cursor.fetchall():
+            table_oid = row.get("table_oid") or 0
+            if table_oid not in result.keys():
+                result[table_oid] = []
+            result.get(table_oid).append(row)
+
+        logging.info("GetTableTrigger loaded = {0}".format(cursor.rowcount))
+
+        return result
+
+    @CalcDuration
+    def GetTablePolicy(self, cursor):
+        result = {}
+        cursor.execute("""
+            select
+                plc.polrelid as table_oid,
+                plc.polname as name,
+                case trim(lower(plc.polcmd))
+                    when 'r' then 'SELECT'
+                    when 'a' then 'INSERT'
+                    when 'w' then 'UPDATE'
+                    when 'd' then 'DELETE'
+                    else 'ALL'
+                end as command,
+                case when plc.polpermissive then 'PERMISSIVE' else 'RESTRICTIVE' end as type,
+                pg_get_expr(plc.polqual, plc.polrelid) as expr_using,
+                pg_get_expr(plc.polwithcheck, plc.polrelid) as expr_with_check,
+                (
+                    select array_agg(distinct trim(lower(coalesce(plcrr.rolname, 'public'))))
+                    from unnest(plc.polroles) plcr
+                    left join pg_roles plcrr on
+                        plcrr.oid = plcr
+                ) as roles
+            from pg_policy plc
+            where
+                plc.polqual is not null or
+                plc.polwithcheck is not null
+        """, [self.ExcludeSchemas])
+        for row in cursor.fetchall():
+            table_oid = row.get("table_oid") or 0
+            if table_oid not in result.keys():
+                result[table_oid] = []
+            result.get(table_oid).append(row)
+
+        logging.info("GetTablePolicy loaded = {0}".format(cursor.rowcount))
+
+        return result
+
+    @CalcDuration
+    def GetTableSequence(self, cursor):
+        result = {}
+        cursor.execute("""
+            select
+                d.refobjid as table_oid,
+                n.nspname as schema,
+                s.relname as name,
+                s.relacl as acl,
+                o.rolname as owner,
+                trim(coalesce(obj_description(s.oid, 'pg_class'), '')) as comment
+            from pg_depend d
+            join pg_class s on
+                s.oid = d.objid and
+                s.relkind = 'S'
+            join pg_namespace n on
+                n.oid = s.relnamespace AND
+                n.nspname != ALL(%s)
+            join pg_roles o ON
+                o.oid = s.relowner
+        """, [self.ExcludeSchemas])
+        for row in cursor.fetchall():
+            result[row.get("table_oid")] = row
+
+        logging.info("GetTableSequence loaded = {0}".format(cursor.rowcount))
+
+        return result
 
     @CalcDuration
     def GetTable(self, cursor):
@@ -164,13 +374,7 @@ class Database():
                     null::varchar as part_border,
                     null::varchar as part_key,
                     c.relacl AS acl,
-                    c.reloptions,
-                    &columns&,
-                    &constraints&,
-                    &indexes&,
-                    &triggers&,
-                    &sequence&,
-                    &policy&
+                    c.reloptions
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -205,13 +409,7 @@ class Database():
                     pg_get_expr(c.relpartbound, c.oid, true) as part_border,
                     pg_get_partkeydef(c.oid) as part_key,
                     c.relacl::varchar[] AS acl,
-                    c.reloptions,
-                    &columns&,
-                    &constraints&,
-                    &indexes&,
-                    &triggers&,
-                    &sequence&,
-                    &policy&
+                    c.reloptions
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -246,13 +444,7 @@ class Database():
                     pg_get_expr(c.relpartbound, c.oid, true) as part_border,
                     pg_get_partkeydef(c.oid) as part_key,
                     c.relacl::varchar[] AS acl,
-                    c.reloptions,
-                    &columns&,
-                    &constraints&,
-                    &indexes&,
-                    &triggers&,
-                    &sequence&,
-                    &policy&
+                    c.reloptions
                 FROM pg_class c
                 JOIN pg_namespace n ON
                     n.oid = c.relnamespace AND
@@ -274,183 +466,25 @@ class Database():
         else:
             raise Exception("Unknown PostgreSQL version - {0}".format(self.Version))
 
-        query = query.replace("&columns&", """
-                    (
-                        select jsonb_agg(q order by q.order_num)
-                        from (
-                            select
-                                trim(lower(a.attname)) as name,
-                                trim(lower(format_type(a.atttypid, a.atttypmod))) as type,
-                                a.attnotnull as not_null,
-                                pg_get_expr(ad.adbin, ad.adrelid) as default_value,
-                                trim(d.description) as comment,
-                                a.attnum as order_num,
-                                max(a.attnum) over (partition by a.attrelid) as max_order_num
-                            from pg_attribute a
-                            left join pg_attrdef ad on
-                                a.atthasdef and
-                                ad.adrelid = a.attrelid and
-                                ad.adnum = a.attnum
-                            left join pg_description d on
-                                d.objoid = a.attrelid and
-                                d.objsubid = a.attnum
-                            where
-                                a.attrelid = c.oid and
-                                a.attnum > 0 and
-                                not a.attisdropped
-                        ) q
-                    ) as columns
-        """)
-
-        query = query.replace("&constraints&", """
-                    (
-                        select jsonb_agg(q order by q.order_num, q.name)
-                        from (
-                            select
-                                trim(lower(co.conname)) as name,
-                                trim(lower(co.contype)) as type,
-                                case trim(lower(co.contype))
-                                    when 'p' then 1
-                                    when 'u' then 2
-                                    when 'c' then 3
-                                    when 'f' then 4
-                                    else          5
-                                end::integer as order_num,
-                                pg_get_constraintdef(co.oid) as definition,
-                                case trim(lower(co.confupdtype))
-                                    when 'a' then 'ON UPDATE NO ACTION'
-                                    when 'r' then 'ON UPDATE RESTRICT'
-                                    when 'c' then 'ON UPDATE CASCADE'
-                                    when 'n' then 'ON UPDATE SET NULL'
-                                    when 'd' then 'ON UPDATE SET DEFAULT'
-                                end as update_action,
-                                case trim(lower(co.confdeltype))
-                                    when 'a' then 'ON DELETE NO ACTION'
-                                    when 'r' then 'ON DELETE RESTRICT'
-                                    when 'c' then 'ON DELETE CASCADE'
-                                    when 'n' then 'ON DELETE SET NULL'
-                                    when 'd' then 'ON DELETE SET DEFAULT'
-                                end as delete_action,
-                                case trim(lower(co.confmatchtype))
-                                    when 'f' then 'MATCH FULL'
-                                    when 'p' then 'MATCH PARTIAL'
-                                    when 'u' then 'MATCH SIMPLE'
-                                    when 's' then 'MATCH SIMPLE'
-                                end as match_action,
-                                case
-                                    when trim(lower(co.contype)) != 'f' then ''
-                                    when co.condeferrable and co.condeferred then
-                                        'DEFERRABLE INITIALLY DEFERRED'
-                                    when co.condeferrable and not co.condeferred then
-                                        'DEFERRABLE INITIALLY IMMEDIATE'
-                                    else
-                                        'NOT DEFERRABLE'
-                                end as deferrable_type
-                            from pg_constraint co
-                            where
-                                co.conrelid = c.oid and
-                                co.conislocal
-                        ) q
-                    ) as constraints
-        """)
-
-        query = query.replace("&indexes&", """
-                    (
-                        select jsonb_agg(q order by q.name)
-                        from (
-                            select
-                                trim(lower(ic.relname)) as name,
-                                pg_get_indexdef(i.indexrelid, 0, true) as definition
-                            from pg_index i
-                            join pg_class ic on
-                                ic.oid = i.indexrelid
-                            where
-                                i.indrelid = c.oid and
-                                not i.indisprimary and
-                                not exists(
-                                    select 1
-                                    from pg_constraint co
-                                    where co.conindid = ic.oid
-                                )
-                        ) q
-                    ) as indexes
-        """)
-
-        query = query.replace("&triggers&", """
-                    (
-                        select jsonb_agg(q order by q.name)
-                        from (
-                            select
-                                trim(lower(tr.tgname)) as name,
-                                tr.tgenabled = 'D' as is_disabled,
-                                pg_get_triggerdef(tr.oid) as definition
-                            FROM pg_trigger tr
-                            where
-                                tr.tgrelid = c.oid and
-                                not tr.tgisinternal
-                        ) q
-                    ) as triggers
-        """)
-
-        query = query.replace("&sequence&", """
-                    (
-                        select row_to_json(q) from (
-                            select
-                                n.nspname as schema,
-                                s.relname as name,
-                                s.relacl AS acl,
-                                o.rolname as owner,
-                                trim(coalesce(obj_description(s.oid, 'pg_class'), '')) AS comment
-                            from pg_depend d
-                            join pg_class s on
-                                s.oid = d.objid and
-                                s.relkind = 'S'
-                            join pg_namespace n on
-                                n.oid = s.relnamespace
-                            JOIN pg_roles o ON
-                                o.oid = s.relowner
-                            where d.refobjid = c.oid
-                            limit 1
-                        ) q
-                    ) as sequence
-        """)
-
-        query = query.replace("&policy&", """
-                    (
-                        select jsonb_agg(q order by q.name) from (
-                            select
-                                plc.polname as name,
-                                case trim(lower(plc.polcmd))
-                                    when 'r' then 'SELECT'
-                                    when 'a' then 'INSERT'
-                                    when 'w' then 'UPDATE'
-                                    when 'd' then 'DELETE'
-                                    else 'ALL'
-                                end as command,
-                                case when plc.polpermissive then 'PERMISSIVE' else 'RESTRICTIVE' end as type,
-                                pg_get_expr(plc.polqual, plc.polrelid) as expr_using,
-                                pg_get_expr(plc.polwithcheck, plc.polrelid) as expr_with_check,
-                                (
-                                    select array_agg(distinct trim(lower(coalesce(plcrr.rolname, 'public'))))
-                                    from unnest(plc.polroles) plcr
-                                    left join pg_roles plcrr on
-                                        plcrr.oid = plcr
-                                ) as roles
-                            from pg_policy plc
-                            where
-                                plc.polrelid = c.oid and
-                                (plc.polqual is not null or plc.polwithcheck is not null)
-                            order by 1
-                        ) q
-                    ) as policies
-        """)
+        columns = self.GetTableColumn(cursor)
+        constraints = self.GetTableConstraint(cursor)
+        indexes = self.GetTableIndex(cursor)
+        sequences = self.GetTableSequence(cursor)
+        triggers = self.GetTableTrigger(cursor)
+        policies = self.GetTablePolicy(cursor)
 
         cursor.execute(query, [self.ExcludeSchemas])
-
         for row in cursor.fetchall():
+            table_oid = row.get("oid") or 0
+            row["columns"] = columns.get(table_oid)
+            row["constraints"] = constraints.get(table_oid)
+            row["sequence"] = sequences.get(table_oid)
+            row["indexes"] = indexes.get(table_oid)
+            row["triggers"] = triggers.get(table_oid)
+            row["policies"] = policies.get(table_oid)
             self.Objects.update(Table(None, row).Export())
 
-        logging.info("Tables loaded = {0}".format(cursor.rowcount))
+        logging.info("GetTable loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetFunction(self, cursor):
@@ -509,7 +543,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Function(None, row).Export())
 
-        logging.info("Functions loaded = {0}".format(cursor.rowcount))
+        logging.info("GetFunction loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetProcedure(self, cursor):
@@ -545,7 +579,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Procedure(None, row).Export())
 
-        logging.info("Procedures loaded = {0}".format(cursor.rowcount))
+        logging.info("GetProcedure loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetView(self, cursor):
@@ -614,7 +648,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(View(None, row).Export())
 
-        logging.info("Views loaded = {0}".format(cursor.rowcount))
+        logging.info("GetView loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetSequence(self, cursor):
@@ -650,7 +684,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Sequence(None, row).Export())
 
-        logging.info("Sequences loaded = {0}".format(cursor.rowcount))
+        logging.info("GetSequence loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetForeignServer(self, cursor):
@@ -689,7 +723,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(ForeignServer(None, row).Export())
 
-        logging.info("Foreign servers loaded = {0}".format(cursor.rowcount))
+        logging.info("GetForeignServer loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetForeignTable(self, cursor):
@@ -739,7 +773,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(ForeignTable(None, row).Export())
 
-        logging.info("Foreign tables loaded = {0}".format(cursor.rowcount))
+        logging.info("GetForeignTable loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetExtension(self, cursor):
@@ -760,7 +794,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Extension(None, row).Export())
 
-        logging.info("Extensions loaded = {0}".format(cursor.rowcount))
+        logging.info("GetExtension loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetPublication(self, cursor):
@@ -799,7 +833,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Publication(None, row).Export())
 
-        logging.info("Publications loaded = {0}".format(cursor.rowcount))
+        logging.info("GetPublication loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetSubscription(self, cursor):
@@ -838,7 +872,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Subscription(None, row).Export())
 
-        logging.info("Subscriptions loaded = {0}".format(cursor.rowcount))
+        logging.info("GetSubscription loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetEventTrigger(self, cursor):
@@ -868,7 +902,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(EventTrigger(None, row).Export())
 
-        logging.info("Event triggers loaded = {0}".format(cursor.rowcount))
+        logging.info("GetEventTrigger loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
     def GetCast(self, cursor):
@@ -901,4 +935,4 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Cast(None, row).Export())
 
-        logging.info("Casts loaded = {0}".format(cursor.rowcount))
+        logging.info("GetCast loaded = {0}".format(cursor.rowcount))
