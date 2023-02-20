@@ -170,6 +170,7 @@ class Database():
             where
                 a.attnum > 0 and
                 not a.attisdropped
+            order by table_oid, order_num
         """, [self.ExcludeSchemas])
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
@@ -228,6 +229,7 @@ class Database():
                 end as deferrable_type
             from pg_constraint co
             where co.conislocal
+            order by table_oid, name
         """, [self.ExcludeSchemas])
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
@@ -257,6 +259,7 @@ class Database():
                     from pg_constraint co
                     where co.conindid = ic.oid
                 )
+            order by table_oid, name
         """, [self.ExcludeSchemas])
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
@@ -279,6 +282,7 @@ class Database():
                 pg_get_triggerdef(tr.oid) as definition
             from pg_trigger tr
             where not tr.tgisinternal
+            order by table_oid, name
         """, [self.ExcludeSchemas])
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
@@ -317,6 +321,7 @@ class Database():
             where
                 plc.polqual is not null or
                 plc.polwithcheck is not null
+            order by table_oid, name
         """, [self.ExcludeSchemas])
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
