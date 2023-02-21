@@ -569,7 +569,8 @@ class Database():
             join pg_namespace n on
                 n.oid = p.pronamespace and
                 n.nspname !~* '^pg_temp' AND
-                n.nspname !~* '^pg_toast'
+                n.nspname !~* '^pg_toast' AND
+                n.nspname != ALL(%(exclude_schemas)s)
             join pg_language l on
                 l.oid = p.prolang and
                 l.lanname in ('sql','plpgsql','plpythonu','plpython3u','plproxy')
