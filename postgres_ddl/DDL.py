@@ -26,6 +26,9 @@ class DDL(object):
     def GetObjectType(self):
         raise NotImplementedError("GetObjectType method is not implemented for class {0}".format(type(self)))
 
+    def GetObjectTypeComment(self):
+        raise NotImplementedError("GetObjectTypeComment method is not implemented for class {0}".format(type(self)))
+
     def GetObjectName(self):
         raise NotImplementedError("GetObjectName method is not implemented for class {0}".format(type(self)))
 
