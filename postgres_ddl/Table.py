@@ -14,6 +14,7 @@ from postgres_ddl.TablePolicy import TablePolicy
 from postgres_ddl.TableSequence import TableSequence
 from postgres_ddl.TableSettings import TableSettings
 from postgres_ddl.TableTrigger import TableTrigger
+from postgres_ddl.TSDB_HyperTable import TSDB_HyperTable
 
 class Table(DDL):
     def __init__(self, parent, data):
@@ -129,6 +130,10 @@ class Table(DDL):
             plc = TablePolicy(self.GetObjectName(), plc)
             self.Policies.append(plc)
 
+        self.TSDB_HyperTable = None
+        if data.get("tsdb_hypertable") is not None:
+            self.TSDB_HyperTable = TSDB_HyperTable(self.GetFullName(), data.get("tsdb_hypertable") or [])
+
     def __str__(self):
         return self.GetFullName()
 
@@ -237,6 +242,10 @@ class Table(DDL):
         for plc in sorted(self.Policies, key=lambda x: x.GetFullName()):
             r += plc.DDL_Create()
             r += Config.NL + Config.NL
+
+        if self.TSDB_HyperTable is not None:
+            r += self.TSDB_HyperTable.DDL_Create()
+            r += Config.NL
 
         return r.strip() + Config.NL
 

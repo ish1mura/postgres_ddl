@@ -35,6 +35,7 @@ class Database():
         self.Version        = None
         self.Objects        = {}
         self.ExcludeSchemas = exclude_schemas
+        self.HasTimescaleDB = False
 
     def __str__(self):
         """
@@ -54,6 +55,7 @@ class Database():
                 self.GetSuperUser(cursor)
                 self.GetVersion(cursor)
                 self.GetNamespace(cursor)
+                self.GetExtension(cursor)
                 self.GetTable(cursor)
                 self.GetFunction(cursor)
                 self.GetProcedure(cursor)
@@ -61,7 +63,6 @@ class Database():
                 self.GetSequence(cursor)
                 self.GetForeignServer(cursor)
                 self.GetForeignTable(cursor)
-                self.GetExtension(cursor)
                 self.GetPublication(cursor)
                 self.GetSubscription(cursor)
                 self.GetEventTrigger(cursor)
@@ -362,6 +363,80 @@ class Database():
         return result
 
     @CalcDuration
+    def GetTSDBHyperTable(self, cursor):
+        result = {}
+
+        if not self.HasTimescaleDB:
+            return result
+
+        cursor.execute("""
+            select
+                h.id,
+                concat_ws('.', h.schema_name, h.table_name) as relation,
+                h.associated_schema_name as parts_schema,
+                h.associated_table_prefix as parts_prefix,
+                h.compression_state > 0 as is_compress,
+                nullif(trim(case
+                    when jc.config is null then null
+                    else format('INTERVAL %L', jc.config ->> 'compress_after')
+                end), '') as compress_after,
+                nullif(trim(cmp.order_by), '') as compress_order_by,
+                nullif(trim(cmp.segment_by), '') as compress_segment_by,
+                nullif(trim(case
+                    when jr.config is null then null
+                    else format('INTERVAL %L', jr.config ->> 'drop_after')
+                end), '') as drop_after,
+                (
+                    select jsonb_agg(q order by q.order_num)
+                    from (
+                        select
+                            d.column_name,
+                            d.num_slices,
+                            nullif(trim(concat_ws('.', d.partitioning_func_schema, d.partitioning_func)), '') as fnc_part,
+                            nullif(trim(concat_ws('.', d.integer_now_func_schema, d.integer_now_func)), '') as fnc_int_now,
+                            row_number() over (partition by d.hypertable_id order by d.id asc) as order_num,
+                            case
+                                when d.interval_length is null then null
+                                when (
+                                    d.column_type::varchar !~* 'timestamp' and
+                                    d.column_type::varchar !~* 'date'
+                                ) then d.interval_length::varchar
+                                else format('INTERVAL %L', format('%s sec', d.interval_length / 1000000))
+                            end as interval
+                        from _timescaledb_catalog.dimension d
+                        where d.hypertable_id = h.id
+                    ) q
+                ) as dimensions
+            from _timescaledb_catalog.hypertable h
+            left join _timescaledb_config.bgw_job jc ON
+                jc.hypertable_id = h.id and
+                jc.proc_name = 'policy_compression'
+            left join _timescaledb_config.bgw_job jr ON
+                jr.hypertable_id = h.id and
+                jr.proc_name = 'policy_retention'
+            left join lateral(
+                SELECT
+                    string_agg(format('"%s" %s NULLS %s',
+                        hc.attname,
+                        case when hc.orderby_asc then 'ASC' else 'DESC' end,
+                        case when hc.orderby_nullsfirst then 'FIRST' else 'LAST' end
+                    ), ', ' order by hc.orderby_column_index asc)
+                        filter (where hc.orderby_column_index > 0) as order_by,
+                    string_agg(format('"%s"', hc.attname), ', ' order by hc.segmentby_column_index asc)
+                        filter (where hc.segmentby_column_index > 0) as segment_by
+                FROM _timescaledb_catalog.hypertable_compression hc
+                where hc.hypertable_id = h.id
+            ) cmp on true
+            where h.num_dimensions > 0
+        """)
+        for row in cursor.fetchall():
+            result[row.get("relation")] = row
+
+        logging.info("GetTSDBHyperTable loaded = {0}".format(cursor.rowcount))
+
+        return result
+
+    @CalcDuration
     def GetTable(self, cursor):
         if self.Version in (9, 9):
             query = """
@@ -477,16 +552,19 @@ class Database():
         sequences = self.GetTableSequence(cursor)
         triggers = self.GetTableTrigger(cursor)
         policies = self.GetTablePolicy(cursor)
+        tsdb_hypertable = self.GetTSDBHyperTable(cursor)
 
         cursor.execute(query, [self.ExcludeSchemas])
         for row in cursor.fetchall():
             table_oid = row.get("oid") or 0
+            table_name = ".".join([row.get("schema"), row.get("name")])
             row["columns"] = columns.get(table_oid)
             row["constraints"] = constraints.get(table_oid)
             row["sequence"] = sequences.get(table_oid)
             row["indexes"] = indexes.get(table_oid)
             row["triggers"] = triggers.get(table_oid)
             row["policies"] = policies.get(table_oid)
+            row["tsdb_hypertable"] = tsdb_hypertable.get(table_name)
             self.Objects.update(Table(None, row).Export())
 
         logging.info("GetTable loaded = {0}".format(cursor.rowcount))
@@ -799,6 +877,9 @@ class Database():
 
         for row in cursor.fetchall():
             self.Objects.update(Extension(None, row).Export())
+
+            if row.get("name") == 'timescaledb':
+                self.HasTimescaleDB = True
 
         logging.info("GetExtension loaded = {0}".format(cursor.rowcount))
 
