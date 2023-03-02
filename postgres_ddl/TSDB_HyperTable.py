@@ -15,7 +15,7 @@ class TSDB_HyperTable(DDL):
 
         self.TSDB_Schema = (data.get("tsdb_schema") or "timescaledb").strip().lower()
         assert len(self.TSDB_Schema) > 0, \
-            f"{self.GetObjectTypeComment()} relation is null"
+            f"{self.GetObjectTypeComment()} TSDB schema is null"
 
         self.Relation = (data.get("relation") or "").strip().lower()
         assert len(self.Relation) > 0, \
@@ -31,6 +31,9 @@ class TSDB_HyperTable(DDL):
 
         self.IsCompress = (data.get("is_compress") is True)
         self.CompressAfter = (data.get("compress_after") or "").strip().lower()
+        self.CompressOrderBy = (data.get("compress_order_by") or "").strip().lower()
+        self.CompressSegmentBy = (data.get("compress_segment_by") or "").strip().lower()
+
         self.DropAfter = (data.get("drop_after") or "").strip().lower()
 
         self.PartColumn = None
@@ -58,30 +61,10 @@ class TSDB_HyperTable(DDL):
     def GetFullName(self):
         return self.Relation
 
-    def DDL_FncParams(self, params=[], is_inline=False, sign=":="):
-        result = []
-
-        sep = Config.NL
-        indent = Config.Indent
-        if is_inline is True:
-            sep = " "
-            indent = ""
-
-        for (name, value, is_quote) in (params or []):
-            if is_quote is True:
-                value = f"'{value}'"
-            result.append(f"{indent}{name} {sign} {value}")
-
-        return f",{sep}".join(sorted(result))
-
     def DDL_CreateHyperTable(self):
-        r = f"SELECT {self.TSDB_Schema}.create_hypertable("
-        r += Config.NL
-
         params = [
             ["relation", self.Relation, True],
             ["time_column_name", self.PartColumn.Column, True],
-            ["if_not_exists", "TRUE", False],
             ["create_default_indexes", "FALSE", False],
             ["migrate_data", "FALSE", False],
             ["associated_schema_name", self.PartsSchema, True],
@@ -98,7 +81,9 @@ class TSDB_HyperTable(DDL):
             if len(self.PartColumn.FncIntNow) > 0:
                 params.append(["partitioning_func", self.PartColumn.FncIntNow, True])
 
-        r += self.DDL_FncParams(params)
+        r = f"SELECT {self.TSDB_Schema}.create_hypertable("
+        r += Config.NL
+        r += self.FillFunctionParams(params)
         r += Config.NL
         r += ");"
         return r
@@ -109,10 +94,9 @@ class TSDB_HyperTable(DDL):
     def DDL_CreateRetentionPolicy(self):
         r = f"SELECT {self.TSDB_Schema}.add_retention_policy("
         r += Config.NL
-        r += self.DDL_FncParams([
+        r += self.FillFunctionParams([
             ["hypertable", self.Relation, True],
             ["drop_after", self.DropAfter, False],
-            ["if_not_exists", "TRUE", False],
         ])
         r += Config.NL
         r += ");"
@@ -124,27 +108,30 @@ class TSDB_HyperTable(DDL):
     def DDL_CreateCompressionPolicy(self):
         r = f"SELECT {self.TSDB_Schema}.add_compression_policy("
         r += Config.NL
-        r += self.DDL_FncParams([
+        r += self.FillFunctionParams([
             ["hypertable", self.Relation, True],
             ["compress_after", self.CompressAfter, False],
-            ["if_not_exists", "TRUE", False],
         ])
         r += Config.NL
         r += ");"
         return r
 
     def DDL_DropCompressionSettings(self):
-        r = self.DDL_FncParams([
-            ["timescaledb.compress", "FALSE", False]
+        r = self.FillFunctionParams([
+            ["timescaledb.compress", "FALSE", False],
         ], True, "=")
         return f"ALTER TABLE {self.Relation} SET({r});"
 
     def DDL_CreateCompressionSettings(self):
+        params = [
+            ["timescaledb.compress", str(self.IsCompress).upper(), False],
+            ["timescaledb.compress_orderby", self.CompressOrderBy, True],
+            ["timescaledb.compress_segmentby", self.CompressSegmentBy, True]
+        ]
+
         r = f"ALTER TABLE {self.Relation} SET("
         r += Config.NL
-        r += self.DDL_FncParams([
-            ["timescaledb.compress", str(self.IsCompress).upper(), False]
-        ], False, "=")
+        r += self.FillFunctionParams(params, False, "=")
         r += Config.NL
         r += ");"
         return r
@@ -154,6 +141,12 @@ class TSDB_HyperTable(DDL):
         r += Config.NL + Config.NL
         r += self.DDL_CreateHyperTable()
         r += Config.NL + Config.NL
+
+        for dim in self.Dimensions:
+            r += f"-- {self.GetObjectTypeComment()} dimension: {self.Relation}.{dim.Column}"
+            r += Config.NL + Config.NL
+            r += dim.DDL_Create()
+            r += Config.NL + Config.NL
 
         if self.IsCompress:
             r += f"-- {self.GetObjectTypeComment()} compression settings: {self.Relation}"

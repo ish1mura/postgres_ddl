@@ -380,6 +380,8 @@ class Database():
                     when jc.config is null then null
                     else format('INTERVAL %L', jc.config ->> 'compress_after')
                 end), '') as compress_after,
+                nullif(trim(cmp.order_by), '') as compress_order_by,
+                nullif(trim(cmp.segment_by), '') as compress_segment_by,
                 nullif(trim(case
                     when jr.config is null then null
                     else format('INTERVAL %L', jr.config ->> 'drop_after')
@@ -394,10 +396,11 @@ class Database():
                             nullif(trim(concat_ws('.', d.integer_now_func_schema, d.integer_now_func)), '') as fnc_int_now,
                             row_number() over (partition by d.hypertable_id order by d.id asc) as order_num,
                             case
+                                when d.interval_length is null then null
                                 when (
                                     d.column_type::varchar !~* 'timestamp' and
                                     d.column_type::varchar !~* 'date'
-                                ) then (d.interval_length / 1000000)::varchar
+                                ) then d.interval_length::varchar
                                 else format('INTERVAL %L', format('%s sec', d.interval_length / 1000000))
                             end as interval
                         from _timescaledb_catalog.dimension d
@@ -411,6 +414,20 @@ class Database():
             left join _timescaledb_config.bgw_job jr ON
                 jr.hypertable_id = h.id and
                 jr.proc_name = 'policy_retention'
+            left join lateral(
+                SELECT
+                    string_agg(format('"%s" %s NULLS %s',
+                        hc.attname,
+                        case when hc.orderby_asc then 'ASC' else 'DESC' end,
+                        case when hc.orderby_nullsfirst then 'FIRST' else 'LAST' end
+                    ), ', ' order by hc.orderby_column_index asc)
+                        filter (where hc.orderby_column_index > 0) as order_by,
+                    string_agg(format('"%s"', hc.attname), ', ' order by hc.segmentby_column_index asc)
+                        filter (where hc.segmentby_column_index > 0) as segment_by
+                FROM _timescaledb_catalog.hypertable_compression hc
+                where hc.hypertable_id = h.id
+            ) cmp on true
+            where h.num_dimensions > 0
         """)
         for row in cursor.fetchall():
             result[row.get("relation")] = row

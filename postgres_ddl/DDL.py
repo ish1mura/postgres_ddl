@@ -1,6 +1,8 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
+from postgres_ddl.Config import Config
+
 class DDL(object):
     def __init__(self, parent, data):
         self.Parent = (parent or "").strip().lower()
@@ -55,3 +57,20 @@ class DDL(object):
 
     def Diff(self, another):
         return []
+
+    def FillFunctionParams(self, params=[], is_inline=False, sign=Config.FncParamSign):
+        result = []
+
+        sep = Config.NL
+        indent = Config.Indent
+        if is_inline is True:
+            sep = " "
+            indent = ""
+
+        for (name, value, is_quote) in (params or []):
+            if is_quote is True:
+                value = f"'{value}'"
+            result.append(f"{indent}{name} {sign} {value}")
+
+        return f",{sep}".join(sorted(result))
+
