@@ -15,6 +15,7 @@ from postgres_ddl.ForeignServer import ForeignServer
 from postgres_ddl.ForeignTable import ForeignTable
 from postgres_ddl.Function import Function
 from postgres_ddl.Namespace import Namespace
+from postgres_ddl.PGQ import PGQ
 from postgres_ddl.Procedure import Procedure
 from postgres_ddl.Publication import Publication
 from postgres_ddl.Sequence import Sequence
@@ -67,6 +68,7 @@ class Database():
                 self.GetSubscription(cursor)
                 self.GetEventTrigger(cursor)
                 self.GetCast(cursor)
+                self.GetPGQ(cursor)
 
     def GetConnectionString(self, connect):
         assert connect is not None, \
@@ -1023,3 +1025,25 @@ class Database():
             self.Objects.update(Cast(None, row).Export())
 
         logging.info("GetCast loaded = {0}".format(cursor.rowcount))
+
+    @CalcDuration
+    def GetPGQ(self, cursor):
+        cursor.execute("""
+            select
+                q.queue_name,
+                q.queue_ticker_paused,
+                q.queue_ticker_max_count,
+                q.queue_ticker_max_lag::varchar,
+                q.queue_ticker_idle_period::varchar,
+                c.consumers
+            from pgq.get_queue_info() q
+            join lateral(
+                select array_agg(distinct c.consumer_name order by c.consumer_name) as consumers
+                from pgq.get_consumer_info(q.queue_name) c
+            ) c on true
+        """)
+
+        for row in cursor.fetchall():
+            self.Objects.update(PGQ(None, row).Export())
+
+        logging.info("GetPGQ loaded = {0}".format(cursor.rowcount))

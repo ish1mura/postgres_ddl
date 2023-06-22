@@ -95,7 +95,7 @@ class TSDB_HyperTable(DDL):
         r = f"SELECT {self.TSDB_Schema}.add_retention_policy("
         r += Config.NL
         r += self.FillFunctionParams([
-            ["hypertable", self.Relation, True],
+            ["relation", self.Relation, True],
             ["drop_after", self.DropAfter, False],
         ])
         r += Config.NL
