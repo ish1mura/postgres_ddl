@@ -37,6 +37,7 @@ class Database():
         self.Objects        = {}
         self.ExcludeSchemas = exclude_schemas
         self.HasTimescaleDB = False
+        self.HasPGQ         = False
 
     def __str__(self):
         """
@@ -883,6 +884,9 @@ class Database():
             if row.get("name") == 'timescaledb':
                 self.HasTimescaleDB = True
 
+            if row.get("name") == 'pgq':
+                self.HasPGQ = True
+
         logging.info("GetExtension loaded = {0}".format(cursor.rowcount))
 
     @CalcDuration
@@ -1028,6 +1032,9 @@ class Database():
 
     @CalcDuration
     def GetPGQ(self, cursor):
+        if not self.HasPGQ:
+            return
+
         cursor.execute("""
             select
                 q.queue_name,
