@@ -345,7 +345,7 @@ class Database():
                 d.refobjid as table_oid,
                 n.nspname as schema,
                 s.relname as name,
-                s.relacl as acl,
+                s.relacl::varchar[] as acl,
                 o.rolname as owner,
                 trim(coalesce(obj_description(s.oid, 'pg_class'), '')) as comment
             from pg_depend d
@@ -456,7 +456,7 @@ class Database():
                     end AS parent_table,
                     null::varchar as part_border,
                     null::varchar as part_key,
-                    c.relacl AS acl,
+                    c.relacl::varchar[] AS acl,
                     c.reloptions
                 FROM pg_class c
                 JOIN pg_namespace n ON
