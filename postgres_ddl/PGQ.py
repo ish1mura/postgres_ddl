@@ -12,7 +12,7 @@ class PGQ(DDL):
         assert len(self.Name or 0) > 0, \
             "PGQ name is null"
 
-        self.IsPaused = data.get("queue_ticker_paused") is False
+        self.IsPaused = data.get("queue_ticker_paused") is True
 
         self.MaxCount = data.get("queue_ticker_max_count") or 0
         assert self.MaxCount > 0, \
