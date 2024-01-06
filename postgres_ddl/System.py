@@ -5,9 +5,7 @@ import os
 import json
 import logging
 from timeit import default_timer
-
-# Default lines separator
-SEP = chr(10)
+from postgres_ddl.Config import Config
 
 def CheckPath(path):
     """
@@ -144,3 +142,15 @@ def SetupLogging(config):
             #handlers.TimedRotatingFileHandler("log.log", backupCount=7, when='D', interval=1)
         ]
     )
+
+def FileDataProcess(data=""):
+    """
+    File content processing
+    @param data: File content
+    """
+    data = (data or "")
+    data = data.replace(chr(10)+chr(13), Config.NL)
+    data = data.replace(chr(13)+chr(10), Config.NL)
+    data = data.replace(chr(13), Config.NL)
+    data = data.replace(chr(10), Config.NL)
+    return data.strip()

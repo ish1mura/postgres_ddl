@@ -5,8 +5,9 @@ import os
 import logging
 from shutil import rmtree
 
+from postgres_ddl.Config import Config
 from postgres_ddl.Database import Database
-from postgres_ddl.System import SEP, SetupLogging
+from postgres_ddl.System import SetupLogging
 
 class Diff():
     def __init__(self, config):
@@ -96,17 +97,17 @@ class Diff():
                 # Write CREATE to source
                 with open(self.GetPath(source_db, self.PathSource, sv), "a", encoding="utf-8") as wf:
                     wf.write(sv.DDL_Create())
-                    wf.write(SEP + SEP)
+                    wf.write(Config.NL + Config.NL)
 
                 # Write CREATE to diff
                 with open(self.GetPath(source_db, self.PathDiff, sv), "a", encoding="utf-8") as wf:
                     wf.write(sv.DDL_Create())
-                    wf.write(SEP + SEP)
+                    wf.write(Config.NL + Config.NL)
 
                 # Write CREATE to object type file
                 with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
                     wf.write(tv.DDL_Create())
-                    wf.write(SEP + SEP)
+                    wf.write(Config.NL + Config.NL)
 
             # IN source, IN target
             else:
@@ -122,22 +123,22 @@ class Diff():
                 # Write CREATE to source
                 with open(self.GetPath(source_db, self.PathSource, sv), "a", encoding="utf-8") as wf:
                     wf.write(sv.DDL_Create())
-                    wf.write(SEP + SEP)
+                    wf.write(Config.NL + Config.NL)
 
                 # Write CREATE to target
                 with open(self.GetPath(target_db, self.PathTarget, tv), "a", encoding="utf-8") as wf:
                     wf.write(tv.DDL_Create())
-                    wf.write(SEP + SEP)
+                    wf.write(Config.NL + Config.NL)
 
                 # Write DROP and CREATE to diff
                 with open(self.GetPath(source_db, self.PathDiff, sv), "a", encoding="utf-8") as wf:
-                    wf.write((SEP+SEP).join(diff))
-                    wf.write(SEP + SEP)
+                    wf.write((Config.NL + Config.NL).join(diff))
+                    wf.write(Config.NL + Config.NL)
 
                 # Write DROP and CREATE to object type file
                 with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
-                    wf.write((SEP).join(diff))
-                    wf.write(SEP + SEP)
+                    wf.write((Config.NL).join(diff))
+                    wf.write(Config.NL + Config.NL)
 
         # Iterate objects of target database
         for tk, tv in target_db.Objects.items():
@@ -155,14 +156,14 @@ class Diff():
             # Write CREATE to target
             with open(self.GetPath(target_db, self.PathTarget, tv), "a", encoding="utf-8") as wf:
                 wf.write(tv.DDL_Create())
-                wf.write(SEP + SEP)
+                wf.write(Config.NL + Config.NL)
 
             # Write DROP to diff
             with open(self.GetPath(target_db, self.PathDiff, tv), "a", encoding="utf-8") as wf:
                 wf.write(tv.DDL_Drop())
-                wf.write(SEP + SEP)
+                wf.write(Config.NL + Config.NL)
 
             # Write DROP to object type file
             with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
                 wf.write(tv.DDL_Drop())
-                wf.write(SEP + SEP)
+                wf.write(Config.NL + Config.NL)

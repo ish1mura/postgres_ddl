@@ -58,7 +58,7 @@ class DDL(object):
     def Diff(self, another):
         return []
 
-    def FillFunctionParams(self, params=[], is_inline=False, sign=Config.FncParamSign):
+    def FillFunctionParams(self, params=[], is_inline=False, sign=Config.FunctionParamSign):
         result = []
 
         sep = Config.NL
@@ -73,4 +73,3 @@ class DDL(object):
             result.append(f"{indent}{name} {sign} {value}")
 
         return f",{sep}".join(sorted(result))
-

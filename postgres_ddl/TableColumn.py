@@ -1,9 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import re
 from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
+from postgres_ddl.System import FileDataProcess
 
 class TableColumn(DDL):
     def __init__(self, parent, data):
@@ -41,7 +41,7 @@ class TableColumn(DDL):
 
         self.Comment = data.get("comment")
         if self.Comment is not None:
-            self.Comment = re.sub("[\n\r]{1,}", Config.NL, self.Comment, re.MULTILINE | re.IGNORECASE)
+            self.Comment = FileDataProcess(self.Comment)
 
     def __str__(self):
         return self.GetFullName()

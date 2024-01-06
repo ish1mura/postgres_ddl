@@ -8,7 +8,7 @@ from multiprocessing import Pool
 
 from postgres_ddl.Config import Config
 from postgres_ddl.Database import Database
-from postgres_ddl.System import SetupLogging
+from postgres_ddl.System import SetupLogging, FileDataProcess
 
 class Grabber():
     def __init__(self, config):
@@ -31,15 +31,16 @@ class Grabber():
         """
         os.chdir(self.Path)
         res = subprocess.run(["git", "status", "--short"], shell=True, capture_output=True)
-        res = res.stdout.decode("utf-8").replace(chr(10), chr(13))
-        for file in res.split(chr(13)):
+        res = res.stdout.decode("utf-8")
+        res = FileDataProcess(res)
+        for file in res.split(Config.NL):
             file = file[3:]
             if file.find("_logical") >= 0:
                 subprocess.run(["git", "checkout", "-q", "--", file], shell=True)
 
     def WriteFile(self, file):
-        with open(file.get("path"), "w", encoding="utf8") as wf:
-            wf.write(file.get("data"))
+        with open(file.get("path"), "w", encoding="utf-8") as wf:
+            wf.write(FileDataProcess(file.get("data")) + Config.NL)
 
     def Run(self):
         database = Database(connect=self.Connect, exclude_schemas=self.ExcludeSchemas)
