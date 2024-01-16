@@ -6,7 +6,7 @@ from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
 from postgres_ddl.Grant import Grant
 from postgres_ddl.Owner import Owner
-from postgres_ddl.System import ParseACL
+from postgres_ddl.System import ParseACL, FileDataProcess
 
 class Function(DDL):
     def __init__(self, parent, data):
@@ -47,7 +47,7 @@ class Function(DDL):
         self.HasDuplicate = data.get("has_duplicate") or False
         self.IsTrigger = data.get("is_trigger") or False
 
-        self.Code = (data.get("code") or "").strip()
+        self.Code = FileDataProcess(data.get("code"))
         assert len(self.Code) > 0, \
             "Function code is null"
 

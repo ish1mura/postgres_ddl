@@ -1,12 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import re
 from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
-from postgres_ddl.System import SEP
-
-RE_NEWLINE = re.compile("[\r\n]{1,}", re.MULTILINE|re.IGNORECASE)
+from postgres_ddl.System import FileDataProcess
 
 class Comment(DDL):
     def __init__(self, parent, data):
@@ -20,7 +17,7 @@ class Comment(DDL):
         assert len(self.Instance) > 0, \
             f"Comment instance name is null - {parent}"
 
-        self.Comment = re.sub(RE_NEWLINE, SEP, (data.get("comment") or "").strip())
+        self.Comment = FileDataProcess(data.get("comment"))
 
         self.IsExists = len(self.Comment) > 0
 
