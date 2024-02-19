@@ -6,7 +6,7 @@ class Config():
     NL = chr(10)
     FunctionParamSign = ":="
     ShowSequenceGrantsInTable = False
-    ShowUserMappings = False
+    ShowUserMappings = True
     FolderFunction = "functions"
     FolderTrigger  = "triggers"
 
@@ -18,6 +18,6 @@ class Config():
 
         settings = json.get("settings") or {}
         Config.ShowSequenceGrantsInTable = (settings.get("show_sequence_grants_in_table") is True)
-        Config.ShowUserMappings = (settings.get("show_user_mappings") is True)
+        Config.ShowUserMappings = (settings.get("show_user_mappings") is not False)
         Config.FolderFunction = settings.get("folder_functions") or "functions"
         Config.FolderTrigger  = settings.get("folder_triggers")  or "triggers"
