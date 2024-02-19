@@ -5,8 +5,10 @@ class Config():
     Indent = " " * 2
     NL = chr(10)
     FunctionParamSign = ":="
-    SequenceGrantsInTable = False
-    UserMappingsHide = False
+    ShowSequenceGrantsInTable = False
+    ShowUserMappings = False
+    FolderFunction = "functions"
+    FolderTrigger  = "triggers"
 
     @staticmethod
     def Parse(json):
@@ -14,6 +16,8 @@ class Config():
         Config.NL = json.get("new_line") or chr(10)
         Config.FunctionParamSign = json.get("fnc_param_sign") or ":="
 
-        style = json.get("style") or []
-        Config.SequenceGrantsInTable = "seq_grants_in_table" in style
-        Config.UserMappingsHide = "hide_user_mappings" in style
+        settings = json.get("settings") or {}
+        Config.ShowSequenceGrantsInTable = (settings.get("show_sequence_grants_in_table") is True)
+        Config.ShowUserMappings = (settings.get("show_user_mappings") is True)
+        Config.FolderFunction = settings.get("folder_functions") or "functions"
+        Config.FolderTrigger  = settings.get("folder_triggers")  or "triggers"

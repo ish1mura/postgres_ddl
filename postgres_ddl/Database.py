@@ -792,7 +792,7 @@ class Database():
                 w.oid = s.srvfdw
         """
 
-        if self.IsSuperUser and not Config.UserMappingsHide:
+        if self.IsSuperUser and Config.ShowUserMappings:
             query = query.replace("&user_mappings&", """
                 (
                     select jsonb_object_agg(coalesce(umr.rolname, 'public'), um.umoptions)

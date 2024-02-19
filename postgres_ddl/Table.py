@@ -227,7 +227,7 @@ class Table(DDL):
                 r += Config.NL
         r += Config.NL
 
-        if Config.SequenceGrantsInTable and self.Sequence is not None:
+        if Config.ShowSequenceGrantsInTable and self.Sequence is not None:
             r += self.Sequence.DDL_Create()
             r += Config.NL
 

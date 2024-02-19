@@ -152,7 +152,11 @@ class Function(DDL):
         return r.strip() + Config.NL
 
     def GetPath(self):
-        return [self.Schema, "triggers" if self.IsTrigger else "functions"]
+        if self.IsTrigger:
+            dir = Config.FolderTrigger or "triggers"
+        else:
+            dir = Config.FolderFunction or "functions"
+        return [self.Schema, dir]
 
     def GetFileName(self):
         if self.HasDuplicate:
