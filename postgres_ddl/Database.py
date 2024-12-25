@@ -511,7 +511,7 @@ class Database():
                     n.nspname != ALL(%s)
                 ORDER BY 2,3
             """
-        elif self.Version in (12,13,14,15,16):
+        elif self.Version in (12,13,14,15,16,17):
             query = """
                 SELECT
                     c.oid,
