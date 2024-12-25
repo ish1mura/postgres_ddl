@@ -161,6 +161,7 @@ class Database():
                 a.attnotnull as not_null,
                 pg_get_expr(ad.adbin, ad.adrelid) as default_value,
                 trim(d.description) as comment,
+                a.attacl::varchar[] as acl,
                 a.attnum as order_num,
                 max(a.attnum) over (partition by a.attrelid) as max_order_num
             from pg_attribute a

@@ -16,6 +16,10 @@ class Grant(DDL):
         assert len(self.Instance) > 0, \
             f"Grant instance name is null - {parent}"
 
+        self.InstanceExtra = (data.get("instance_extra") or "").strip()
+        if len(self.InstanceExtra) > 0:
+            self.InstanceExtra = f"({self.InstanceExtra})"
+
         self.IsGrant = data.get("is_grant")
         assert self.IsGrant is not None, \
             f"Grant type is null - {parent}"
@@ -55,16 +59,10 @@ class Grant(DDL):
         return "_".join([self.GetObjectType(), self.Type, self.Instance, self.Role])
 
     def DDL_Create(self):
-        return "%s %s ON %s %s %s %s;" % (
-            self.Status, self.Permissions, self.Type,
-            self.Instance, self.Prep, self.Role
-        )
+        return f"{self.Status} {self.Permissions}{self.InstanceExtra} ON {self.Type} {self.Instance} {self.Prep} {self.Role};"
 
     def DDL_Drop(self):
-        return "%s %s ON %s %s %s %s;" % (
-            self.StatusDrop, self.Permissions, self.Type,
-            self.Instance, self.PrepDrop, self.Role
-        )
+        return f"{self.StatusDrop} {self.Permissions}{self.InstanceExtra} ON {self.Type} {self.Instance} {self.PrepDrop} {self.Role};"
 
     def Diff(self, another):
         if self.Permissions != another.Permissions:

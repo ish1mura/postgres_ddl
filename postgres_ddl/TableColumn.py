@@ -3,7 +3,9 @@
 
 from postgres_ddl.Config import Config
 from postgres_ddl.DDL import DDL
-from postgres_ddl.System import FileDataProcess
+from postgres_ddl.Grant import Grant
+from postgres_ddl.Owner import Owner
+from postgres_ddl.System import FileDataProcess, ParseACL
 
 class TableColumn(DDL):
     def __init__(self, parent, data):
@@ -39,9 +41,34 @@ class TableColumn(DDL):
 
         self.IsLast = (self.OrderNum == self.OrderNumLast)
 
+        self.Owner = Owner(
+            self.GetObjectName(),
+            {
+                "instance_type" : self.GetTag(),
+                "instance_name" : self.GetFullName(),
+                "owner_name"    : data.get("owner")
+            }
+        )
+
         self.Comment = data.get("comment")
         if self.Comment is not None:
             self.Comment = FileDataProcess(self.Comment)
+
+        self.Grants = []
+        if len(data.get("acl") or []) > 0:
+            for grant in ParseACL(data.get("acl"), self.Owner.Owner):
+                grant["instance_type"] = "TABLE"
+                grant["instance_name"] = f"{self.Schema}.{self.Table}"
+                grant["instance_extra"] = self.Name
+                grant = Grant(self.GetObjectName(), grant)
+
+                if grant.Role == self.Owner.Owner:
+                    continue
+
+                if grant.Role == "public" and not grant.IsGrant:
+                    continue
+
+                self.Grants.append(grant)
 
     def __str__(self):
         return self.GetFullName()

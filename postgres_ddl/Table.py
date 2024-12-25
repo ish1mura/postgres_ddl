@@ -95,6 +95,7 @@ class Table(DDL):
         for column in (data.get("columns") or []):
             column["schema"] = self.Schema
             column["table"] = self.Name
+            column["owner"] = self.Owner.Owner
             column = TableColumn(self.GetObjectName(), column)
             self.Columns.append(column)
 
@@ -215,6 +216,15 @@ class Table(DDL):
                 r += grant.DDL_Create()
                 r += Config.NL
         r += Config.NL
+
+        has_column_grants = False
+        for col in sorted(self.Columns, key=lambda x: x.Name):
+            for col_grant in sorted(col.Grants, key=lambda x: x.Role):
+                r += col_grant.DDL_Create()
+                r += Config.NL
+                has_column_grants = True
+        if has_column_grants:
+            r += Config.NL
 
         if self.Comment.IsExists:
             r += self.Comment.DDL_Create()
