@@ -62,6 +62,8 @@ def ParseACL(acl, owner):
             permissions.append("ALL")
         elif grants == "arwdDxt":
             permissions.append("ALL")
+        elif grants == "arwdDxtm":
+            permissions.append("ALL")
         elif grants == "rwU":
             permissions.append("ALL")
         elif grants == "X":
