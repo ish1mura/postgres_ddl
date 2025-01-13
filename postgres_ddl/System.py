@@ -83,6 +83,8 @@ def ParseACL(acl, owner):
                 permissions.append("REFERENCES")
             if grants.find("t") >= 0:
                 permissions.append("TRIGGER")
+            if grants.find("m") >= 0:
+                permissions.append("MAINTAIN")
 
         result.append({
             "is_grant" : True,
