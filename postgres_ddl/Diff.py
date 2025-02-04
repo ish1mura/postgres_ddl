@@ -106,7 +106,7 @@ class Diff():
 
                 # Write CREATE to object type file
                 with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
-                    wf.write(tv.DDL_Create())
+                    wf.write(sv.DDL_Create())
                     wf.write(Config.NL + Config.NL)
 
             # IN source, IN target
