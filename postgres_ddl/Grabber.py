@@ -58,6 +58,9 @@ class Grabber():
             file_name = o.GetFileName()
             if len(file_name) <= 0:
                 continue
+            file_name = file_name.replace("\\", "_")
+            file_name = file_name.replace("/", "_")
+            file_name = file_name.replace('"', "")
 
             path = [self.Path] + path
             path = "/".join(path)
