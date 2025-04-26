@@ -18,7 +18,7 @@ class UserMapping(DDL):
         assert len(self.Instance) > 0, \
             f"UserMapping instance name is null - {parent}"
 
-        self.Role = (data.get("role") or "").strip().lower()
+        self.Role = (data.get("role") or "").strip()
 
         self.Options = sorted(data.get("options") or [])
 

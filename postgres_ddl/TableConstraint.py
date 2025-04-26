@@ -8,19 +8,19 @@ class TableConstraint(DDL):
     def __init__(self, parent, data):
         super().__init__(parent, data)
 
-        self.Schema = (data.get("schema") or "").strip().lower()
+        self.Schema = (data.get("schema") or "").strip()
         assert len(self.Schema) > 0, \
             "Constraint schema is null"
 
-        self.Table = (data.get("table") or "").strip().lower()
+        self.Table = (data.get("table") or "").strip()
         assert len(self.Table) > 0, \
             "Constraint table is null"
 
-        self.Name = (data.get("name") or "").strip().lower()
+        self.Name = (data.get("name") or "").strip()
         assert len(self.Name) > 0, \
             "Constraint name is null"
 
-        self.Type = (data.get("type") or "").strip().lower()
+        self.Type = (data.get("type") or "").strip()
         assert len(self.Type) > 0, \
             "Constraint type is null"
 

@@ -13,28 +13,28 @@ class TSDB_HyperTable(DDL):
         assert self.ID > 0, \
             f"{self.GetObjectTypeComment()} id is null"
 
-        self.TSDB_Schema = (data.get("tsdb_schema") or "timescaledb").strip().lower()
+        self.TSDB_Schema = (data.get("tsdb_schema") or "timescaledb").strip()
         assert len(self.TSDB_Schema) > 0, \
             f"{self.GetObjectTypeComment()} TSDB schema is null"
 
-        self.Relation = (data.get("relation") or "").strip().lower()
+        self.Relation = (data.get("relation") or "").strip()
         assert len(self.Relation) > 0, \
             f"{self.GetObjectTypeComment()} relation is null"
 
-        self.PartsSchema = (data.get("parts_schema") or "").strip().lower()
+        self.PartsSchema = (data.get("parts_schema") or "").strip()
         assert len(self.PartsSchema) > 0, \
             f"{self.GetObjectTypeComment()} parts_schema is null"
 
-        self.PartsPrefix = (data.get("parts_prefix") or "").strip().lower()
+        self.PartsPrefix = (data.get("parts_prefix") or "").strip()
         assert len(self.PartsPrefix) > 0, \
             f"{self.GetObjectTypeComment()} parts_prefix is null"
 
         self.IsCompress = (data.get("is_compress") is True)
-        self.CompressAfter = (data.get("compress_after") or "").strip().lower()
-        self.CompressOrderBy = (data.get("compress_order_by") or "").strip().lower()
-        self.CompressSegmentBy = (data.get("compress_segment_by") or "").strip().lower()
+        self.CompressAfter = (data.get("compress_after") or "").strip()
+        self.CompressOrderBy = (data.get("compress_order_by") or "").strip()
+        self.CompressSegmentBy = (data.get("compress_segment_by") or "").strip()
 
-        self.DropAfter = (data.get("drop_after") or "").strip().lower()
+        self.DropAfter = (data.get("drop_after") or "").strip()
 
         self.PartColumn = None
         self.Dimensions = []
