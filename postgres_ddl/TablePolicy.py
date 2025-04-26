@@ -8,15 +8,15 @@ class TablePolicy(DDL):
     def __init__(self, parent, data):
         super().__init__(parent, data)
 
-        self.Schema = (data.get("schema") or "").strip().lower()
+        self.Schema = (data.get("schema") or "").strip()
         assert len(self.Schema) > 0, \
             "Policy schema is null"
 
-        self.Table = (data.get("table") or "").strip().lower()
+        self.Table = (data.get("table") or "").strip()
         assert len(self.Table) > 0, \
             "Policy table is null"
 
-        self.Name = (data.get("name") or "").strip().lower()
+        self.Name = (data.get("name") or "").strip()
         assert len(self.Name) > 0, \
             "Policy name is null"
 

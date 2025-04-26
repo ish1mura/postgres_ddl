@@ -8,11 +8,11 @@ class TSDB_Dimension(DDL):
     def __init__(self, parent, data):
         super().__init__(parent, data)
 
-        self.TSDB_Schema = (data.get("tsdb_schema") or "timescaledb").strip().lower()
+        self.TSDB_Schema = (data.get("tsdb_schema") or "timescaledb").strip()
         assert len(self.TSDB_Schema) > 0, \
             f"{self.GetObjectTypeComment()} TSDB schema is null"
 
-        self.Column = (data.get("column_name") or "").strip().lower()
+        self.Column = (data.get("column_name") or "").strip()
         assert len(self.Column) > 0, \
             f"{self.GetObjectTypeComment()} column name is null"
 
@@ -20,11 +20,11 @@ class TSDB_Dimension(DDL):
 
         self.SlicesNum = data.get("num_slices") or 0
 
-        self.FncPart = (data.get("fnc_part") or "").strip().lower()
+        self.FncPart = (data.get("fnc_part") or "").strip()
 
-        self.FncIntNow = (data.get("fnc_int_now") or "").strip().lower()
+        self.FncIntNow = (data.get("fnc_int_now") or "").strip()
 
-        self.Interval = (data.get("interval") or "").strip().lower()
+        self.Interval = (data.get("interval") or "").strip()
 
     def __str__(self):
         return self.GetFullName()

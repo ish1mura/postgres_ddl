@@ -12,11 +12,11 @@ class ForeignTable(DDL):
     def __init__(self, parent, data):
         super().__init__(parent, data)
 
-        self.Schema = (data.get("schema_name") or "").strip().lower()
+        self.Schema = (data.get("schema_name") or "").strip()
         assert len(self.Schema) > 0, \
             "Foreign table schema is null"
 
-        self.Name = (data.get("table_name") or "").strip().lower()
+        self.Name = (data.get("table_name") or "").strip()
         assert len(self.Name) > 0, \
             "Foreign table name is null"
 

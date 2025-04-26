@@ -20,11 +20,11 @@ class View(DDL):
         assert (self.Oid or 0) > 0, \
             "View oid is null"
 
-        self.Schema = (data.get("schema") or "").strip().lower()
+        self.Schema = (data.get("schema") or "").strip()
         assert len(self.Schema) > 0, \
             "View schema is null"
 
-        self.Name = (data.get("name") or "").strip().lower()
+        self.Name = (data.get("name") or "").strip()
         assert len(self.Name) > 0, \
             "View name is null"
 

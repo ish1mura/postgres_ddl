@@ -5,7 +5,7 @@ from postgres_ddl.Config import Config
 
 class DDL(object):
     def __init__(self, parent, data):
-        self.Parent = (parent or "").strip().lower()
+        self.Parent = (parent or "").strip()
 
         assert data is not None, \
             "{0} data is null".format(type(self))
@@ -73,3 +73,6 @@ class DDL(object):
             result.append(f"{indent}{name} {sign} {value}")
 
         return f",{sep}".join(sorted(result))
+
+    def QuoteIdent(self, name):
+        return name

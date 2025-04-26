@@ -8,15 +8,15 @@ class TableSettings(DDL):
     def __init__(self, parent, data):
         super().__init__(parent, data)
 
-        self.Schema = (data.get("schema") or "").strip().lower()
+        self.Schema = (data.get("schema") or "").strip()
         assert len(self.Schema) > 0, \
             "Table settings schema is null"
 
-        self.Table = (data.get("table") or "").strip().lower()
+        self.Table = (data.get("table") or "").strip()
         assert len(self.Table) > 0, \
             "Table settings table is null"
 
-        setting = data.get("setting" or "").strip().lower()
+        setting = data.get("setting" or "").strip()
         assert len(setting) > 0, \
             "Table settings value is null"
         assert setting.find('=') >= 0, \
