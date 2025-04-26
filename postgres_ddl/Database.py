@@ -131,7 +131,7 @@ class Database():
         cursor.execute("""
             SELECT
                 n.oid,
-                n.nspname AS name,
+                quote_ident(n.nspname) AS name,
                 r.rolname AS owner,
                 obj_description(n.oid, 'pg_namespace') AS comment,
                 n.nspacl::varchar[] as acl
@@ -156,7 +156,7 @@ class Database():
         cursor.execute("""
             select
                 a.attrelid as table_oid,
-                a.attname as name,
+                quote_ident(a.attname) as name,
                 format_type(a.atttypid, a.atttypmod) as type,
                 a.attnotnull as not_null,
                 pg_get_expr(ad.adbin, ad.adrelid) as default_value,
@@ -193,7 +193,7 @@ class Database():
         cursor.execute("""
             select
                 co.conrelid as table_oid,
-                co.conname as name,
+                quote_ident(co.conname) as name,
                 co.contype as type,
                 case trim(lower(co.contype))
                     when 'p' then 1
@@ -252,7 +252,7 @@ class Database():
         cursor.execute("""
             select
                 i.indrelid as table_oid,
-                ic.relname as name,
+                quote_ident(ic.relname) as name,
                 pg_get_indexdef(i.indexrelid, 0, true) as definition
             from pg_index i
             join pg_class ic on
@@ -282,7 +282,7 @@ class Database():
         cursor.execute("""
             select
                 tr.tgrelid as table_oid,
-                tr.tgname as name,
+                quote_ident(tr.tgname) as name,
                 tr.tgenabled = 'D' as is_disabled,
                 pg_get_triggerdef(tr.oid) as definition
             from pg_trigger tr
@@ -305,7 +305,7 @@ class Database():
         cursor.execute("""
             select
                 plc.polrelid as table_oid,
-                plc.polname as name,
+                quote_ident(plc.polname) as name,
                 case trim(lower(plc.polcmd))
                     when 'r' then 'SELECT'
                     when 'a' then 'INSERT'
@@ -317,7 +317,7 @@ class Database():
                 pg_get_expr(plc.polqual, plc.polrelid) as expr_using,
                 pg_get_expr(plc.polwithcheck, plc.polrelid) as expr_with_check,
                 (
-                    select array_agg(distinct coalesce(nullif(trim(plcrr.rolname), ''), 'public'))))
+                    select array_agg(distinct coalesce(nullif(trim(plcrr.rolname), ''), 'public'))
                     from unnest(plc.polroles) plcr
                     left join pg_roles plcrr on
                         plcrr.oid = plcr
@@ -344,8 +344,8 @@ class Database():
         cursor.execute("""
             select
                 d.refobjid as table_oid,
-                n.nspname as schema,
-                s.relname as name,
+                quote_ident(n.nspname) as schema,
+                quote_ident(s.relname) as name,
                 s.relacl::varchar[] as acl,
                 o.rolname as owner,
                 obj_description(s.oid, 'pg_class') as comment
@@ -446,14 +446,14 @@ class Database():
             query = """
                 SELECT
                     c.oid,
-                    n.nspname AS schema,
-                    c.relname AS name,
+                    quote_ident(n.nspname) AS schema,
+                    quote_ident(c.relname) AS name,
                     r.rolname AS owner,
                     c.relhasoids::varchar as has_oids,
                     obj_description(c.oid, 'pg_class') AS comment,
                     case
                         when coalesce(trim(pc.relname), '') = '' then null
-                        else pn.nspname || '.' || pc.relname
+                        else quote_ident(pn.nspname) || '.' || quote_ident(pc.relname)
                     end AS parent_table,
                     null::varchar as part_border,
                     null::varchar as part_key,
@@ -481,14 +481,14 @@ class Database():
             query = """
                 SELECT
                     c.oid,
-                    n.nspname AS schema,
-                    c.relname AS name,
+                    quote_ident(n.nspname) AS schema,
+                    quote_ident(c.relname) AS name,
                     r.rolname AS owner,
                     c.relhasoids::varchar as has_oids,
                     obj_description(c.oid, 'pg_class') AS comment,
                     case
                         when coalesce(trim(pc.relname), '') = '' then null
-                        else pn.nspname || '.' || pc.relname
+                        else quote_ident(pn.nspname) || '.' || quote_ident(pc.relname)
                     end AS parent_table,
                     pg_get_expr(c.relpartbound, c.oid, true) as part_border,
                     pg_get_partkeydef(c.oid) as part_key,
@@ -516,14 +516,14 @@ class Database():
             query = """
                 SELECT
                     c.oid,
-                    n.nspname AS schema,
-                    c.relname AS name,
+                    quote_ident(n.nspname) AS schema,
+                    quote_ident(c.relname) AS name,
                     r.rolname AS owner,
                     false::varchar as has_oids,
                     obj_description(c.oid, 'pg_class') AS comment,
                     case
                         when coalesce(trim(pc.relname), '') = '' then null
-                        else pn.nspname || '.' || pc.relname
+                        else quote_ident(pn.nspname) || '.' || quote_ident(pc.relname)
                     end AS parent_table,
                     pg_get_expr(c.relpartbound, c.oid, true) as part_border,
                     pg_get_partkeydef(c.oid) as part_key,
@@ -578,9 +578,9 @@ class Database():
         cursor.execute("""
             select
                 p.oid,
-                n.nspname as schema,
-                p.proname as proc,
-                oidvectortypes(proargtypes) as args_in_types,
+                quote_ident(n.nspname) as schema,
+                quote_ident(p.proname) as proc,
+                oidvectortypes(p.proargtypes) as args_in_types,
                 pg_get_function_arguments(p.oid) as args_in,
                 regexp_replace(regexp_replace(regexp_replace(pg_get_function_result(p.oid), '(?<=[A-Za-z\]])\, ', e'\,\n    ', 'igm'), 'table\(', e'TABLE\(\n    ', 'igm'), '\)$', e'\n\)', 'igm') as args_out,
                 coalesce(p.procost, 0) as cost,
@@ -637,8 +637,8 @@ class Database():
         cursor.execute("""
             select
                 p.oid,
-                n.nspname as schema,
-                p.proname as proc,
+                quote_ident(n.nspname) as schema,
+                quote_ident(p.proname) as proc,
                 oidvectortypes(p.proargtypes) as args_in_types,
                 pg_get_function_arguments(p.oid) as args_in,
                 o.rolname as owner,
@@ -674,8 +674,8 @@ class Database():
         query = """
             SELECT
                 c.oid,
-                n.nspname AS schema,
-                c.relname AS name,
+                quote_ident(n.nspname) AS schema,
+                quote_ident(c.relname) AS name,
                 r.rolname AS owner_name,
                 obj_description(c.oid, 'pg_class') AS comment,
                 pg_get_viewdef(c.oid, true) as definition,
@@ -685,7 +685,7 @@ class Database():
                 (
                     select jsonb_agg(q) from (
                         select
-                            a.attname as name,
+                            quote_ident(a.attname) as name,
                             d.description as comment
                         from pg_attribute a
                         join pg_description d on
@@ -715,7 +715,7 @@ class Database():
                     select jsonb_agg(q order by q.name)
                     from (
                         select
-                            ic.relname as name,
+                            quote_ident(ic.relname) as name,
                             pg_get_indexdef(i.indexrelid, 0, true) as definition
                         from pg_index i
                         join pg_class ic on
@@ -743,8 +743,8 @@ class Database():
         cursor.execute("""
             SELECT
                 c.oid,
-                n.nspname AS schema,
-                c.relname AS name,
+                quote_ident(n.nspname) AS schema,
+                quote_ident(c.relname) AS name,
                 r.rolname AS owner,
                 obj_description(c.oid, 'pg_class') AS comment,
                 c.relacl::varchar[] AS acl,
@@ -779,7 +779,7 @@ class Database():
         query = """
             select
                 s.oid,
-                s.srvname as server_name,
+                quote_ident(s.srvname) as server_name,
                 w.fdwname as fdw_name,
                 o.rolname as owner_name,
                 s.srvoptions as options,
@@ -796,7 +796,7 @@ class Database():
         if self.IsSuperUser and Config.ShowUserMappings:
             query = query.replace("&user_mappings&", """
                 (
-                    select jsonb_object_agg(coalesce(umr.rolname, 'public'), um.umoptions)
+                    select jsonb_object_agg(coalesce(nullif(trim(umr.rolname), ''), 'public'), um.umoptions)
                     from pg_user_mapping um
                     left join pg_roles umr on
                         umr.oid = um.umuser
@@ -818,10 +818,10 @@ class Database():
         cursor.execute("""
             select
                 c.oid,
-                n.nspname as schema_name,
-                c.relname as table_name,
+                quote_ident(n.nspname) as schema_name,
+                quote_ident(c.relname) as table_name,
                 o.rolname as owner_name,
-                s.srvname as server_name,
+                quote_ident(s.srvname) as server_name,
                 t.ftoptions as options,
                 obj_description(c.oid, 'pg_class') AS comment,
                 c.relacl::varchar[] AS acl,
@@ -868,9 +868,9 @@ class Database():
         cursor.execute("""
             SELECT
                 e.oid,
-                n.nspname AS schema,
-                o.rolname AS owner,
-                e.extname AS name,
+                quote_ident(n.nspname) AS schema,
+                quote_ident(o.rolname) AS owner,
+                quote_ident(e.extname) AS name,
                 e.extversion AS version
             FROM pg_extension e
             JOIN pg_namespace n ON
@@ -895,7 +895,7 @@ class Database():
         query = """
             select
                 p.oid,
-                p.pubname as name,
+                quote_ident(p.pubname) as name,
                 r.rolname as owner,
                 p.pubviaroot as is_via_root,
                 p.puballtables as is_all_tables,
@@ -906,8 +906,10 @@ class Database():
                     case when p.pubtruncate then 'truncate' end
                 ) as actions,
                 (
-                    select array_agg(distinct concat_ws('.', n.nspname, c.relname)
-                        order by concat_ws('.', n.nspname, c.relname))
+                    select array_agg(
+                        distinct concat_ws('.', quote_ident(n.nspname), quote_ident(c.relname))
+                        order by concat_ws('.', quote_ident(n.nspname), quote_ident(c.relname))
+                    )
                     from pg_publication_rel pt
                     join pg_class c on
                         c.oid = pt.prrelid
@@ -937,7 +939,7 @@ class Database():
         cursor.execute("""
             select
                 s.oid,
-                s.subname as name,
+                quote_ident(s.subname) as name,
                 r.rolname as owner,
                 s.subenabled as is_enabled,
                 (
@@ -949,8 +951,10 @@ class Database():
                 s.subsynccommit as sync_commit,
                 s.subpublications as publications,
                 (
-                    select array_agg(distinct concat_ws('.', n.nspname, c.relname)
-                        order by concat_ws('.', n.nspname, c.relname))
+                    select array_agg(
+                        distinct concat_ws('.', quote_ident(n.nspname), quote_ident(c.relname))
+                        order by concat_ws('.', quote_ident(n.nspname), quote_ident(c.relname))
+                    )
                     from pg_subscription_rel st
                     join pg_class c on
                         c.oid = st.srrelid
@@ -973,11 +977,15 @@ class Database():
         cursor.execute("""
             select
                 t.oid,
-                t.evtname as name,
+                quote_ident(t.evtname) as name,
                 r.rolname as owner,
                 upper(t.evtevent) as event,
                 t.evttags as tags,
-                format('%s.%s(%s)', n.nspname, p.proname, oidvectortypes(p.proargtypes)) as fnc,
+                format('%s.%s(%s)',
+                    quote_ident(n.nspname),
+                    quote_ident(p.proname),
+                    oidvectortypes(p.proargtypes)
+                ) as fnc,
                 case t.evtenabled
                     when 'D' then 'DISABLE'
                     when 'R' THEN 'ENABLE REPLICA'
@@ -1012,7 +1020,11 @@ class Database():
                 end as context,
                 case
                     when p.oid is null then null
-                    else format('%s.%s(%s)', pn.nspname, p.proname, oidvectortypes(p.proargtypes))
+                    else format('%s.%s(%s)',
+                        quote_ident(pn.nspname),
+                        quote_ident(p.proname),
+                        oidvectortypes(p.proargtypes)
+                    )
                 end as func
             from pg_cast c
             join pg_type ts on
@@ -1038,7 +1050,7 @@ class Database():
 
         cursor.execute("""
             select
-                q.queue_name,
+                quote_ident(q.queue_name) as queue_name,
                 q.queue_ticker_paused,
                 q.queue_ticker_max_count,
                 q.queue_ticker_max_lag::varchar,

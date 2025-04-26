@@ -73,6 +73,3 @@ class DDL(object):
             result.append(f"{indent}{name} {sign} {value}")
 
         return f",{sep}".join(sorted(result))
-
-    def QuoteIdent(self, name):
-        return name
