@@ -115,7 +115,7 @@ class TableColumn(DDL):
     def DDL_Comment(self):
         if self.Comment is not None and self.Comment.strip() != "":
             return f"COMMENT ON {self.GetTag()} {self.Schema}.{self.Table}.{self.Name}{Config.NL}{Config.Indent}IS '{self.Comment}';"
-        return None
+        return ""
 
     def DDL_Type(self):
         return f"ALTER TABLE {self.Schema}.{self.Table} ALTER {self.GetTag()} {self.Name} TYPE {self.Type};"

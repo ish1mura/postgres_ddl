@@ -151,7 +151,12 @@ class Diff():
             if len(tv.Parent or "") > 0 and tv.Parent not in source_db.Objects.keys():
                 continue
 
-            logging.debug("DROP {0} not in source".format(sk))
+            logging.debug("DROP {0} not in source".format(tk))
+
+            # Write DROP to source
+            with open(self.GetPath(source_db, self.PathSource, tv), "a", encoding="utf-8") as wf:
+                wf.write(tv.DDL_Drop())
+                wf.write(Config.NL + Config.NL)
 
             # Write CREATE to target
             with open(self.GetPath(target_db, self.PathTarget, tv), "a", encoding="utf-8") as wf:
