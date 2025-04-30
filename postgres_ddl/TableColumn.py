@@ -115,7 +115,7 @@ class TableColumn(DDL):
     def DDL_Comment(self):
         if self.Comment is not None and self.Comment.strip() != "":
             return f"COMMENT ON {self.GetTag()} {self.Schema}.{self.Table}.{self.Name}{Config.NL}{Config.Indent}IS '{self.Comment}';"
-        return ""
+        return None
 
     def DDL_Type(self):
         return f"ALTER TABLE {self.Schema}.{self.Table} ALTER {self.GetTag()} {self.Name} TYPE {self.Type};"
@@ -137,7 +137,9 @@ class TableColumn(DDL):
         result = []
 
         if self.Comment != another.Comment:
-            result.append(self.DDL_Comment())
+            query = self.DDL_Comment()
+            if query is not None:
+                result.append(query)
 
         if self.DefaultValue != another.DefaultValue:
             result.append(self.DDL_Default())
