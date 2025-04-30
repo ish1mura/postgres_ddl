@@ -575,7 +575,7 @@ class Database():
 
     @CalcDuration
     def GetFunction(self, cursor):
-        cursor.execute("""
+        query = """
             select
                 p.oid,
                 quote_ident(n.nspname) as schema,
@@ -601,7 +601,7 @@ class Database():
                 end as volatility,
                 1 < count(*) over (partition by n.nspname, p.proname) as has_duplicate,
                 coalesce(trim(lower(t.typname)), '') = 'trigger' as is_trigger,
-                replace(p.prosrc, E'\r', '') as code,
+                &code& as code,
                 p.proacl::varchar[] as acl
             from pg_proc p
             join pg_namespace n on
@@ -622,7 +622,15 @@ class Database():
             ) vrb on true
             where p.prokind in ('f')
             order by 1
-        """, {
+        """
+
+        if self.Version >= 14:
+            code = "case when p.prosqlbody is not null then pg_get_function_sqlbody(p.oid) else p.prosrc end"
+        else:
+            code = "p.prosrc"
+        query = query.replace("&code&", code)
+
+        cursor.execute(query, {
             "indent": Config.Indent,
             "exclude_schemas": self.ExcludeSchemas
         })
