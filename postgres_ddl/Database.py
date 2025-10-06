@@ -233,7 +233,9 @@ class Database():
                         'NOT DEFERRABLE'
                 end as deferrable_type
             from pg_constraint co
-            where co.conislocal
+            where
+                co.conislocal and
+                trim(lower(co.contype)) not in ('n')
             order by table_oid, name
         """, [self.ExcludeSchemas])
         for row in cursor.fetchall():
@@ -512,7 +514,7 @@ class Database():
                     n.nspname != ALL(%s)
                 ORDER BY 2,3
             """
-        elif self.Version in (12,13,14,15,16,17):
+        elif self.Version >= 12:
             query = """
                 SELECT
                     c.oid,
