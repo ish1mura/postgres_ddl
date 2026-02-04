@@ -1,8 +1,7 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import os
-import logging
+import os, csv, json, logging
 from shutil import rmtree
 
 from postgres_ddl.Config import Config
@@ -21,8 +20,14 @@ class Diff():
         self.PathSource = "/".join([self.Path, "_source"])
         self.PathTarget = "/".join([self.Path, "_target"])
         self.PathDiff   = "/".join([self.Path, "_diff"])
+        self.PathShort  = "/".join([self.Path, "_stats_short.json"])
+        self.PathDetail = "/".join([self.Path, "_stats_detail.csv"])
 
         self.ExcludeSchemas = config.get("exclude_schemas") or []
+
+        self.StatsShort = {}
+        self.StatsDetailHeaders = ["Status", "Source", "Target"]
+        self.StatsDetail = []
 
         SetupLogging(config)
 
@@ -50,6 +55,36 @@ class Diff():
             os.makedirs(path)
 
         return "/".join([path, file_name])
+
+    def LogStats(self, source, target):
+        object_type = None
+
+        source_path = None
+        if source is not None:
+            source_path = source.GetObjectName()
+            object_type = type(source).__name__
+
+        target_path = None
+        if target is not None:
+            target_path = target.GetObjectName()
+            object_type = type(target).__name__
+
+        if source_path is not None:
+            if target_path is not None:
+                status = "Diff"
+            else:
+                status = "Source only"
+        else:
+            if source_path is not None:
+                status = "Target only"
+            else:
+                return
+
+        self.StatsDetail.append([status, source_path, target_path])
+
+        if object_type not in self.StatsShort.keys():
+            self.StatsShort[object_type] = 0
+        self.StatsShort[object_type] += 1
 
     def Run(self):
         logging.info("Diff started")
@@ -110,6 +145,8 @@ class Diff():
                     wf.write(sv.DDL_Create())
                     wf.write(Config.NL + Config.NL)
 
+                self.LogStats(sv, None)
+
             # IN source, IN target
             else:
                 tv = target_db.Objects.get(sk)
@@ -140,6 +177,8 @@ class Diff():
                 with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
                     wf.write((Config.NL).join(diff))
                     wf.write(Config.NL + Config.NL)
+
+                self.LogStats(sv, tv)
 
         # Iterate objects of target database
         for tk, tv in target_db.Objects.items():
@@ -173,3 +212,18 @@ class Diff():
             with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
                 wf.write(tv.DDL_Drop())
                 wf.write(Config.NL + Config.NL)
+
+            self.LogStats(None, tv)
+
+        # Write short stats
+        if len(self.StatsShort.keys()):
+            with open(self.PathShort, "w", newline="") as wf:
+                json.dump(self.StatsShort, wf, indent=4)
+
+        # Write detail stats
+        if len(self.StatsDetail) > 0:
+            with open(self.PathDetail, "w", newline="") as wf:
+                writer = csv.writer(wf)
+                writer.writerow(self.StatsDetailHeaders)
+                for row in sorted(self.StatsDetail, key=lambda x: (x[1] or "")):
+                    writer.writerow(row)
