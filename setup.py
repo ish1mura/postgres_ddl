@@ -8,7 +8,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="postgres_ddl",
-    version="1.28",
+    version="1.29",
     author="ish1mura",
     author_email="ek.dummy@gmail.com",
     description="PostgreSQL metadata grabber and comparer",

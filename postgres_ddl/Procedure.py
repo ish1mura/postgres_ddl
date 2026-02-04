@@ -147,13 +147,9 @@ class Procedure(DDL):
 
     def Diff(self, another):
         if (
-            self.ArgsIn     != another.ArgsIn     or
-            self.ArgsOut    != another.ArgsOut    or
-            self.Code       != another.Code       or
-            self.Cost       != another.Cost       or
-            self.Language   != another.Language   or
-            self.Rows       != another.Rows       or
-            self.Volatility != another.Volatility
+            self.ArgsIn   != another.ArgsIn   or
+            self.Code     != another.Code     or
+            self.Language != another.Language
         ):
             return [
                 another.DDL_Drop(),

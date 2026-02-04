@@ -29,6 +29,7 @@ class Diff():
     def GetPath(self, db, root, object):
         # Get file name and path
         file_name = (object.GetFileName() or "").strip()
+        file_name = file_name.replace('"', "")
         path = object.GetPath() or []
 
         # File name not found - get from parent object
