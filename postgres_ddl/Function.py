@@ -75,6 +75,8 @@ class Function(DDL):
             grant["instance_name"] = self.NameWithParams
             self.Grants.append(Grant(self.GetObjectName(), grant))
 
+        self.Settings = data.get("settings") or {}
+
     def __str__(self):
         return self.GetFullName()
 
@@ -134,6 +136,10 @@ class Function(DDL):
         if self.Rows > 0:
             r += Config.NL
             r += f"{Config.Indent}ROWS {int(self.Rows)}"
+
+        for sk, sv in self.Settings.items():
+            r += Config.NL
+            r += f"{Config.Indent}SET {sk} TO {sv}"
 
         r += ";"
         r += Config.NL + Config.NL

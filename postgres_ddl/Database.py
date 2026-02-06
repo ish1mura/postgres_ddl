@@ -604,7 +604,16 @@ class Database():
                 1 < count(*) over (partition by n.nspname, p.proname) as has_duplicate,
                 coalesce(trim(lower(t.typname)), '') = 'trigger' as is_trigger,
                 &code& as code,
-                p.proacl::varchar[] as acl
+                p.proacl::varchar[] as acl,
+                (
+                    select jsonb_object_agg(
+                        quote_ident(aa[1]),
+                        quote_literal(aa[2])
+                    )
+                    from unnest(p.proconfig::text[]) cc
+                    join regexp_split_to_array(cc, '=', 'im') aa on
+                        array_length(aa, 1) = 2
+                ) as settings
             from pg_proc p
             join pg_namespace n on
                 n.oid = p.pronamespace and
