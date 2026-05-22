@@ -96,11 +96,14 @@ class Database():
             "username is empty"
 
         password = (connect.get("password") or "").strip()
-        assert len(password) > 0, \
-            "password is empty"
 
-        return "host={0} port={1} dbname={2} user={3} password={4}".format(
-            host, port, database, username, password)
+        return " ".join([
+            f"host={host}",
+            f"port={port}",
+            f"dbname={database}",
+            f"user={username}",
+            f"password={password}" if password else ""
+        ])
 
     @CalcDuration
     def GetSuperUser(self, cursor):
@@ -114,8 +117,9 @@ class Database():
     @CalcDuration
     def GetVersion(self, cursor):
         cursor.execute("""
-            select trim(replace(v.v, 'PostgreSQL ', ''))::integer as version
-            from unnest((select regexp_matches(version(), 'PostgreSQL \\d{1,}'))) v
+            select substring(ver from 0 for position('.' in ver))::int as version
+            from current_setting('server_version') ver
+            limit 1
         """)
 
         for row in cursor.fetchall():
@@ -176,7 +180,7 @@ class Database():
                 a.attnum > 0 and
                 not a.attisdropped
             order by table_oid, order_num
-        """, [self.ExcludeSchemas])
+        """)
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
             if table_oid not in result.keys():
@@ -237,7 +241,7 @@ class Database():
                 co.conislocal and
                 trim(lower(co.contype)) not in ('n')
             order by table_oid, name
-        """, [self.ExcludeSchemas])
+        """)
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
             if table_oid not in result.keys():
@@ -267,7 +271,7 @@ class Database():
                     where co.conindid = ic.oid
                 )
             order by table_oid, name
-        """, [self.ExcludeSchemas])
+        """)
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
             if table_oid not in result.keys():
@@ -290,7 +294,7 @@ class Database():
             from pg_trigger tr
             where not tr.tgisinternal
             order by table_oid, name
-        """, [self.ExcludeSchemas])
+        """)
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
             if table_oid not in result.keys():
@@ -329,7 +333,7 @@ class Database():
                 plc.polqual is not null or
                 plc.polwithcheck is not null
             order by table_oid, name
-        """, [self.ExcludeSchemas])
+        """)
         for row in cursor.fetchall():
             table_oid = row.get("table_oid") or 0
             if table_oid not in result.keys():
@@ -584,7 +588,43 @@ class Database():
                 quote_ident(p.proname) as proc,
                 oidvectortypes(p.proargtypes) as args_in_types,
                 pg_get_function_arguments(p.oid) as args_in,
-                regexp_replace(regexp_replace(regexp_replace(pg_get_function_result(p.oid), '(?<=[A-Za-z\]])\, ', e'\,\n    ', 'igm'), 'table\(', e'TABLE\(\n    ', 'igm'), '\)$', e'\n\)', 'igm') as args_out,
+                coalesce(
+                    case when p.proretset and 't' = any(p.proargmodes) then (
+                        select 'TABLE(' || chr(10) || string_agg(concat_ws(' ', '    ' || quote_ident(x.name), x.type), ',' || chr(10) order by x.rn) || chr(10) || ')' as args_out
+                        from (
+                            select
+                                x.rn,
+                                max(x.name) as name,
+                                max(x.mode) as mode,
+                                max(x.type) as type
+                            from (
+                                select
+                                    x.rn,
+                                    el as name,
+                                    null as mode,
+                                    null as type
+                                from unnest(p.proargnames) with ordinality x(el, rn)
+                                union
+                                select
+                                    x.rn,
+                                    null as name,
+                                    null as mode,
+                                    x.el::regtype::varchar as type
+                                from unnest(p.proallargtypes) with ordinality x(el, rn)
+                                union
+                                select
+                                    x.rn,
+                                    null as name,
+                                    x.el::varchar as mode,
+                                    null as type
+                                from unnest(p.proargmodes) with ordinality x(el, rn)
+                            ) x
+                            group by 1
+                        ) x
+                        where x.mode = 't'
+                    ) end,
+                    pg_get_function_result(p.oid)
+                ) as args_out,
                 coalesce(p.procost, 0) as cost,
                 coalesce(p.prorows, 0) as rows,
                 o.rolname as owner,
