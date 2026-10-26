@@ -100,7 +100,13 @@ class Database():
         assert len(password) > 0, \
             "Password is empty"
 
-        return f"host={host} port={port} dbname={database} user={username} password={password}"
+        return " ".join([
+            f"host={host}",
+            f"port={port}",
+            f"dbname={database}",
+            f"user={username}",
+            f"password={password}" if password else ""
+        ])
 
     @CalcDuration
     def GetSuperUser(self, cursor):

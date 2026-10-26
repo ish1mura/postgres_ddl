@@ -159,9 +159,9 @@ class Function(DDL):
 
     def GetPath(self):
         if self.IsTrigger:
-            dir = Config.TriggersFolderName or "triggers"
+            dir = Config.TriggersFolderName or "trigger"
         else:
-            dir = Config.FunctionsFolderName or "functions"
+            dir = Config.FunctionsFolderName or "function"
         return [self.Schema, dir]
 
     def GetFileName(self):

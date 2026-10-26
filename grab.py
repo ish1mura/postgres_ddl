@@ -1,12 +1,12 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import argparse
+from argparse import ArgumentParser
 import os
 from postgres_ddl.Grabber import Grabber
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
+    parser = ArgumentParser()
 
     parser.add_argument(
         "-c", "--config",

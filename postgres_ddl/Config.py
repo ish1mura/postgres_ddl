@@ -26,8 +26,8 @@ class Config():
     ForeignServersUserMappingsShow = True
 
     FunctionsParamSign = ":="
-    FunctionsFolderName = "functions"
-    TriggersFolderName = "triggers"
+    FunctionsFolderName = None
+    TriggersFolderName = None
 
     @staticmethod
     def Parse(path):
@@ -70,11 +70,11 @@ class Config():
         Config.ForeignServersUserMappingsShow = (foreign_servers.get("user_mappings_show") is not False)
 
         functions = data.get("functions", {})
-        Config.FunctionsFolderName = functions.get("folder_name") or Config.FunctionsFolderName
+        Config.FunctionsFolderName = functions.get("folder_name")
         Config.FunctionsParamSign = functions.get("param_sign") or Config.FunctionsParamSign
 
         triggers = data.get("triggers", {})
-        Config.TriggersFolderName = triggers.get("folder_name") or Config.TriggersFolderName
+        Config.TriggersFolderName = triggers.get("folder_name")
 
         logs = data.get("logs", {})
 
