@@ -1,8 +1,6 @@
 .vscode/
 logs/
-compare/
-grabber/
-diff/
+result/
 build/
 dist/
 *egg-info/

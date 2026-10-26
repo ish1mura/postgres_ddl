@@ -1,42 +1,9 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import os
-import json
 import logging
 from timeit import default_timer
 from postgres_ddl.Config import Config
-
-def CheckPath(path):
-    """
-        Create folder structure if not exists
-        @param path: Path to folder
-    """
-    result = []
-    for p in path.split("/"):
-        result.append(p)
-        p = "/".join(result)
-
-        if not os.path.exists(p):
-            os.mkdir(p)
-
-def ReadConfig(path):
-    assert os.path.exists(path), \
-        "Config file {0} is not exists".format(path)
-
-    with open(path, "r", encoding="utf8") as rf:
-        data = json.loads(rf.read())
-
-        assert data is not None, \
-            "Config file is empty"
-
-        assert isinstance(data, dict), \
-            "Config file must contains dict"
-
-        assert len(data or {}) > 0, \
-            "Config file is empty"
-
-        return data
 
 def ParseACL(acl, owner):
     result = []
@@ -133,23 +100,15 @@ def CalcDuration(fnc):
     def wrapper(*args):
         time_start = default_timer()
         result = fnc(*args)
-        logging.info("{0} duration = {1} sec".format(fnc.__name__, round(default_timer() - time_start, 2)))
+        duration = round(default_timer() - time_start, 2)
+        logging.info(f"{fnc.__name__} duration = {duration} sec")
         return result
     return wrapper
-
-def SetupLogging(config):
-    logging.basicConfig(
-        level=logging.getLevelName(config.get("log_level") or "INFO"),
-        format='%(asctime)s [%(levelname)s] %(message)s',
-        handlers=[
-            logging.StreamHandler(),
-            #handlers.TimedRotatingFileHandler("log.log", backupCount=7, when='D', interval=1)
-        ]
-    )
 
 def FileDataProcess(data=""):
     """
     File content processing
+
     @param data: File content
     """
     data = (data or "")

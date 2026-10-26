@@ -8,20 +8,21 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="postgres_ddl",
-    version="1.32",
+    version="2.0",
     author="ish1mura",
     author_email="ek.dummy@gmail.com",
-    description="PostgreSQL metadata grabber and comparer",
+    description="PostgreSQL database metadata (DDL) grabber to files and schema diff.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/ish1mura/postgres_ddl",
     packages=setuptools.find_packages(),
+    license="GPL-3.0-or-later",
+    license_files=["LICENSE"],
     classifiers=[
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License",
         "Operating System :: OS Independent",
     ],
     install_requires=[
-        'psycopg2-binary',
+        'psycopg[binary]',
     ],
 )

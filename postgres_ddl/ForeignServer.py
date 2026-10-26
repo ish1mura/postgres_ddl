@@ -15,11 +15,11 @@ class ForeignServer(DDL):
 
         self.Schema = "_foreign"
 
-        self.Name = (data.get("server_name") or "").strip()
+        self.Name = (data.get("server_name") or "").strip().lower()
         assert len(self.Name) > 0, \
             "Foreign server name is null"
 
-        self.FDW = (data.get("fdw_name") or "").strip()
+        self.FDW = (data.get("fdw_name") or "").strip().lower()
         assert len(self.FDW) > 0, \
             "Foreign server FDW is null"
 
