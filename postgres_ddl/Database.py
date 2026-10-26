@@ -3,9 +3,9 @@
 
 import logging
 
-import psycopg2
-from psycopg2.extensions import ISOLATION_LEVEL_READ_COMMITTED
-from psycopg2.extras import RealDictCursor
+import psycopg
+from psycopg import IsolationLevel
+from psycopg.rows import dict_row
 
 from postgres_ddl.Cast import Cast
 from postgres_ddl.Config import Config
@@ -25,17 +25,18 @@ from postgres_ddl.Table import Table
 from postgres_ddl.View import View
 
 class Database():
-    def __init__(self, connect, exclude_schemas=[]):
+    def __init__(self, connect_name):
         """
             Database object
-            @param connect: Connection params
-            @param exclude_schemas: Excluded schemas (namespaces)
+
+            @param connect_name: Connection name in config
         """
-        self.Connect        = self.GetConnectionString(connect)
+        connect = Config.Connects.get(connect_name)
+        self.Connect = self.GetConnectionString(connect)
+
         self.IsSuperUser    = False
-        self.Version        = None
+        self.Version        = 0
         self.Objects        = {}
-        self.ExcludeSchemas = exclude_schemas
         self.HasTimescaleDB = False
         self.HasPGQ         = False
 
@@ -51,9 +52,9 @@ class Database():
         """
         logging.debug("Parsing started = %s", self.Connect)
 
-        with psycopg2.connect(self.Connect) as conn:
-            conn.set_isolation_level(ISOLATION_LEVEL_READ_COMMITTED)
-            with conn.cursor(cursor_factory = RealDictCursor) as cursor:
+        with psycopg.connect(self.Connect) as conn:
+            conn.set_isolation_level(IsolationLevel.READ_COMMITTED)
+            with conn.cursor(row_factory=dict_row) as cursor:
                 self.GetSuperUser(cursor)
                 self.GetVersion(cursor)
                 self.GetNamespace(cursor)
@@ -73,29 +74,31 @@ class Database():
 
     def GetConnectionString(self, connect):
         assert connect is not None, \
-            "connection params is null"
+            "Connection params is null"
 
         assert isinstance(connect, dict), \
-            "connection params is not dict"
+            "Connection params is not dict"
 
         assert len(connect.keys()) > 0, \
-            "connection dict is empty"
+            "Connection dict is empty"
 
         host = (connect.get("host") or "").strip()
         assert len(host) > 0, \
-            "host name is empty"
+            "Host name is empty"
 
         port = connect.get("port") or 5432
 
         database = (connect.get("database") or "").strip()
         assert len(database) > 0, \
-            "database name is empty"
+            "Database name is empty"
 
         username = (connect.get("username") or "").strip()
         assert len(username) > 0, \
-            "username is empty"
+            "Username is empty"
 
         password = (connect.get("password") or "").strip()
+        assert len(password) > 0, \
+            "Password is empty"
 
         return " ".join([
             f"host={host}",
@@ -112,7 +115,7 @@ class Database():
         for row in cursor.fetchall():
             self.IsSuperUser = row.get("is_super") or False
 
-        logging.info("IsSuperUser = {0}".format(self.IsSuperUser))
+        logging.info(f"IsSuperUser = {self.IsSuperUser}")
 
     @CalcDuration
     def GetVersion(self, cursor):
@@ -123,12 +126,12 @@ class Database():
         """)
 
         for row in cursor.fetchall():
-            self.Version = row.get("version")
+            self.Version = row.get("version", 0)
 
-        assert (self.Version or 0) > 0, \
-            "failed to get PostgreSQL version "
+        assert self.Version > 0, \
+            "Failed to get PostgreSQL version"
 
-        logging.info("PostgreSQL version = {0}".format(self.Version))
+        logging.info(f"PostgreSQL version = {self.Version}")
 
     @CalcDuration
     def GetNamespace(self, cursor):
@@ -147,12 +150,12 @@ class Database():
                 n.nspname !~* '^pg_temp' AND
                 n.nspname !~* '^pg_toast'
             ORDER BY 2,3
-        """, [self.ExcludeSchemas])
+        """, [Config.SchemasExclude])
 
         for row in cursor.fetchall():
             self.Objects.update(Namespace(None, row).Export())
 
-        logging.info("GetNamespace loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetNamespace loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetTableColumn(self, cursor):
@@ -187,7 +190,7 @@ class Database():
                 result[table_oid] = []
             result.get(table_oid).append(row)
 
-        logging.info("GetTableColumn loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTableColumn loaded = {cursor.rowcount}")
 
         return result
 
@@ -248,7 +251,7 @@ class Database():
                 result[table_oid] = []
             result.get(table_oid).append(row)
 
-        logging.info("GetTableConstraint loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTableConstraint loaded = {cursor.rowcount}")
 
         return result
 
@@ -278,7 +281,7 @@ class Database():
                 result[table_oid] = []
             result.get(table_oid).append(row)
 
-        logging.info("GetTableIndex loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTableIndex loaded = {cursor.rowcount}")
 
         return result
 
@@ -301,7 +304,7 @@ class Database():
                 result[table_oid] = []
             result.get(table_oid).append(row)
 
-        logging.info("GetTableTrigger loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTableTrigger loaded = {cursor.rowcount}")
 
         return result
 
@@ -340,7 +343,7 @@ class Database():
                 result[table_oid] = []
             result.get(table_oid).append(row)
 
-        logging.info("GetTablePolicy loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTablePolicy loaded = {cursor.rowcount}")
 
         return result
 
@@ -364,11 +367,11 @@ class Database():
                 n.nspname != ALL(%s)
             join pg_roles o ON
                 o.oid = s.relowner
-        """, [self.ExcludeSchemas])
+        """, [Config.SchemasExclude])
         for row in cursor.fetchall():
             result[row.get("table_oid")] = row
 
-        logging.info("GetTableSequence loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTableSequence loaded = {cursor.rowcount}")
 
         return result
 
@@ -442,7 +445,7 @@ class Database():
         for row in cursor.fetchall():
             result[row.get("relation")] = row
 
-        logging.info("GetTSDBHyperTable loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTSDBHyperTable loaded = {cursor.rowcount}")
 
         return result
 
@@ -554,7 +557,7 @@ class Database():
                 ORDER BY 2,3
             """
         else:
-            raise Exception("Unknown PostgreSQL version - {0}".format(self.Version))
+            raise Exception(f"Unknown PostgreSQL version - {self.Version}")
 
         columns = self.GetTableColumn(cursor)
         constraints = self.GetTableConstraint(cursor)
@@ -564,7 +567,7 @@ class Database():
         policies = self.GetTablePolicy(cursor)
         tsdb_hypertable = self.GetTSDBHyperTable(cursor)
 
-        cursor.execute(query, [self.ExcludeSchemas])
+        cursor.execute(query, [Config.SchemasExclude])
         for row in cursor.fetchall():
             table_oid = row.get("oid") or 0
             table_name = ".".join([row.get("schema"), row.get("name")])
@@ -577,7 +580,7 @@ class Database():
             row["tsdb_hypertable"] = tsdb_hypertable.get(table_name)
             self.Objects.update(Table(None, row).Export())
 
-        logging.info("GetTable loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetTable loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetFunction(self, cursor):
@@ -683,13 +686,13 @@ class Database():
 
         cursor.execute(query, {
             "indent": Config.Indent,
-            "exclude_schemas": self.ExcludeSchemas
+            "exclude_schemas": Config.SchemasExclude
         })
 
         for row in cursor.fetchall():
             self.Objects.update(Function(None, row).Export())
 
-        logging.info("GetFunction loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetFunction loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetProcedure(self, cursor):
@@ -721,12 +724,12 @@ class Database():
                 t.oid = p.prorettype
             where p.prokind in ('p')
             order by 1
-        """, [self.ExcludeSchemas])
+        """, [Config.SchemasExclude])
 
         for row in cursor.fetchall():
             self.Objects.update(Procedure(None, row).Export())
 
-        logging.info("GetProcedure loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetProcedure loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetView(self, cursor):
@@ -791,11 +794,11 @@ class Database():
                 ) as indexes
         """)
 
-        cursor.execute(query, [self.ExcludeSchemas])
+        cursor.execute(query, [Config.SchemasExclude])
         for row in cursor.fetchall():
             self.Objects.update(View(None, row).Export())
 
-        logging.info("GetView loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetView loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetSequence(self, cursor):
@@ -826,12 +829,12 @@ class Database():
                 s.sequence_name = c.relname
             WHERE c.relkind = 'S'
             ORDER BY 2,3
-        """, [self.ExcludeSchemas])
+        """, [Config.SchemasExclude])
 
         for row in cursor.fetchall():
             self.Objects.update(Sequence(None, row).Export())
 
-        logging.info("GetSequence loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetSequence loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetForeignServer(self, cursor):
@@ -852,7 +855,7 @@ class Database():
                 w.oid = s.srvfdw
         """
 
-        if self.IsSuperUser and Config.ShowUserMappings:
+        if self.IsSuperUser and Config.ForeignServersUserMappingsShow:
             query = query.replace("&user_mappings&", """
                 (
                     select jsonb_object_agg(coalesce(nullif(trim(umr.rolname), ''), 'public'), um.umoptions)
@@ -865,12 +868,12 @@ class Database():
             query = query.replace("&user_mappings&", """
                 null::jsonb""")
 
-        cursor.execute(query, [self.ExcludeSchemas])
+        cursor.execute(query)
 
         for row in cursor.fetchall():
             self.Objects.update(ForeignServer(None, row).Export())
 
-        logging.info("GetForeignServer loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetForeignServer loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetForeignTable(self, cursor):
@@ -915,12 +918,12 @@ class Database():
                 n.nspname !~* '^pg_temp' AND
                 n.nspname !~* '^pg_toast' AND
                 n.nspname != ALL(%s)
-        """, [self.ExcludeSchemas])
+        """, [Config.SchemasExclude])
 
         for row in cursor.fetchall():
             self.Objects.update(ForeignTable(None, row).Export())
 
-        logging.info("GetForeignTable loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetForeignTable loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetExtension(self, cursor):
@@ -947,7 +950,7 @@ class Database():
             if row.get("name") == 'pgq':
                 self.HasPGQ = True
 
-        logging.info("GetExtension loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetExtension loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetPublication(self, cursor):
@@ -988,7 +991,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Publication(None, row).Export())
 
-        logging.info("GetPublication loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetPublication loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetSubscription(self, cursor):
@@ -1029,7 +1032,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Subscription(None, row).Export())
 
-        logging.info("GetSubscription loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetSubscription loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetEventTrigger(self, cursor):
@@ -1063,7 +1066,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(EventTrigger(None, row).Export())
 
-        logging.info("GetEventTrigger loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetEventTrigger loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetCast(self, cursor):
@@ -1100,7 +1103,7 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(Cast(None, row).Export())
 
-        logging.info("GetCast loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetCast loaded = {cursor.rowcount}")
 
     @CalcDuration
     def GetPGQ(self, cursor):
@@ -1125,4 +1128,4 @@ class Database():
         for row in cursor.fetchall():
             self.Objects.update(PGQ(None, row).Export())
 
-        logging.info("GetPGQ loaded = {0}".format(cursor.rowcount))
+        logging.info(f"GetPGQ loaded = {cursor.rowcount}")

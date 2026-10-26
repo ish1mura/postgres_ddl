@@ -1,35 +1,28 @@
 #!/usr/bin/python
 # -*- coding: utf-8 -*-
 
-import os, csv, json, logging
+import os
+import logging
 from shutil import rmtree
 
 from postgres_ddl.Config import Config
 from postgres_ddl.Database import Database
-from postgres_ddl.System import SetupLogging
 
 class Diff():
-    def __init__(self, config):
-        self.ConnectSource = config.get("source") or {}
-        self.ConnectTarget = config.get("target") or {}
+    def __init__(self, path_config, connect_source, connect_target):
+        Config.Parse(path_config)
 
-        self.Path = (config.get("path") or "").strip()
-        assert len(self.Path) > 0, \
-            "Comparer path is null"
+        self.ConnectSource = connect_source.strip().lower()
+        assert len(self.ConnectSource) > 0, \
+            "No source connect name"
 
-        self.PathSource = "/".join([self.Path, "_source"])
-        self.PathTarget = "/".join([self.Path, "_target"])
-        self.PathDiff   = "/".join([self.Path, "_diff"])
-        self.PathShort  = "/".join([self.Path, "_stats_short.json"])
-        self.PathDetail = "/".join([self.Path, "_stats_detail.csv"])
+        self.ConnectTarget = connect_target.strip().lower()
+        assert len(self.ConnectTarget) > 0, \
+            "No target connect name"
 
-        self.ExcludeSchemas = config.get("exclude_schemas") or []
-
-        self.StatsShort = {}
-        self.StatsDetailHeaders = ["Status", "Source", "Target"]
-        self.StatsDetail = []
-
-        SetupLogging(config)
+        self.PathSource = os.path.join(Config.WorkPath, "_source")
+        self.PathTarget = os.path.join(Config.WorkPath, "_target")
+        self.PathDiff   = os.path.join(Config.WorkPath, "_diff")
 
     def GetPath(self, db, root, object):
         # Get file name and path
@@ -50,54 +43,22 @@ class Diff():
             "Object path is null"
 
         # Create subfolders
-        path = "/".join([root] + path)
+        path = os.path.sep.join([root] + path)
         if not os.path.exists(path):
             os.makedirs(path)
 
-        return "/".join([path, file_name])
-
-    def LogStats(self, source, target):
-        object_type = None
-
-        source_path = None
-        if source is not None:
-            source_path = source.GetObjectName()
-            object_type = type(source).__name__
-
-        target_path = None
-        if target is not None:
-            target_path = target.GetObjectName()
-            object_type = type(target).__name__
-
-        if source_path is not None:
-            if target_path is not None:
-                status = "Diff"
-            else:
-                status = "Source only"
-        else:
-            if source_path is not None:
-                status = "Target only"
-            else:
-                return
-
-        self.StatsDetail.append([status, source_path, target_path])
-
-        if object_type not in self.StatsShort.keys():
-            self.StatsShort[object_type] = 0
-        self.StatsShort[object_type] += 1
+        return os.path.join(path, file_name)
 
     def Run(self):
         logging.info("Diff started")
-
-        logging.info("Path = {0}".format(self.Path))
-        logging.info("PathSource = {0}".format(self.PathSource))
-        logging.info("PathTarget = {0}".format(self.PathTarget))
-        logging.info("PathDiff = {0}".format(self.PathDiff))
+        logging.info(f"PathSource = {self.PathSource}")
+        logging.info(f"PathTarget = {self.PathTarget}")
+        logging.info(f"PathDiff = {self.PathDiff}")
 
         # Recreate root folder
-        if os.path.exists(self.Path):
-            rmtree(self.Path)
-        os.mkdir(self.Path)
+        if os.path.exists(Config.WorkPath):
+            rmtree(Config.WorkPath)
+        os.mkdir(Config.WorkPath)
 
         # Subfolders
         os.mkdir(self.PathSource)
@@ -107,16 +68,16 @@ class Diff():
         logging.info("Folders created")
 
         # Parse and export source database
-        source_db = Database(self.ConnectSource, self.ExcludeSchemas)
+        source_db = Database(self.ConnectSource)
         source_db.Parse()
 
-        logging.info("Source db parsed, {0} objects".format(len(source_db.Objects)))
+        logging.info(f"Source db parsed, {len(source_db.Objects)} objects")
 
         # Parse and export target database
-        target_db = Database(self.ConnectTarget, self.ExcludeSchemas)
+        target_db = Database(self.ConnectTarget)
         target_db.Parse()
 
-        logging.info("Target db parsed, {0} objects".format(len(source_db.Objects)))
+        logging.info(f"Target db parsed, {len(target_db.Objects)} objects")
 
         # Iterate objects of source database
         for sk, sv in source_db.Objects.items():
@@ -128,7 +89,7 @@ class Diff():
                 if len(sv.Parent or "") > 0 and sv.Parent not in target_db.Objects.keys():
                     continue
 
-                logging.debug("CREATE {0} not in target".format(sk))
+                logging.debug(f"CREATE {sk} not in target")
 
                 # Write CREATE to source
                 with open(self.GetPath(source_db, self.PathSource, sv), "a", encoding="utf-8") as wf:
@@ -141,11 +102,9 @@ class Diff():
                     wf.write(Config.NL + Config.NL)
 
                 # Write CREATE to object type file
-                with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
+                with open(os.path.join(Config.WorkPath, f"{sv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
                     wf.write(sv.DDL_Create())
                     wf.write(Config.NL + Config.NL)
-
-                self.LogStats(sv, None)
 
             # IN source, IN target
             else:
@@ -156,7 +115,7 @@ class Diff():
                 if len(diff or []) <= 0:
                     continue
 
-                logging.debug("DIFF {0} both source and target".format(sk))
+                logging.debug(f"DIFF {sk} both source and target")
 
                 # Write CREATE to source
                 with open(self.GetPath(source_db, self.PathSource, sv), "a", encoding="utf-8") as wf:
@@ -174,11 +133,9 @@ class Diff():
                     wf.write(Config.NL + Config.NL)
 
                 # Write DROP and CREATE to object type file
-                with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
+                with open(os.path.join(Config.WorkPath, f"{sv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
                     wf.write((Config.NL).join(diff))
                     wf.write(Config.NL + Config.NL)
-
-                self.LogStats(sv, tv)
 
         # Iterate objects of target database
         for tk, tv in target_db.Objects.items():
@@ -191,12 +148,7 @@ class Diff():
             if len(tv.Parent or "") > 0 and tv.Parent not in source_db.Objects.keys():
                 continue
 
-            logging.debug("DROP {0} not in source".format(tk))
-
-            # Write DROP to source
-            with open(self.GetPath(source_db, self.PathSource, tv), "a", encoding="utf-8") as wf:
-                wf.write(tv.DDL_Drop())
-                wf.write(Config.NL + Config.NL)
+            logging.debug(f"DROP {tk} not in source")
 
             # Write CREATE to target
             with open(self.GetPath(target_db, self.PathTarget, tv), "a", encoding="utf-8") as wf:
@@ -209,21 +161,6 @@ class Diff():
                 wf.write(Config.NL + Config.NL)
 
             # Write DROP to object type file
-            with open(sv.GetObjectTypeFile(self.Path), "a", encoding="utf-8") as wf:
+            with open(os.path.join(Config.WorkPath, f"{tv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
                 wf.write(tv.DDL_Drop())
                 wf.write(Config.NL + Config.NL)
-
-            self.LogStats(None, tv)
-
-        # Write short stats
-        if len(self.StatsShort.keys()):
-            with open(self.PathShort, "w", newline="") as wf:
-                json.dump(self.StatsShort, wf, indent=4)
-
-        # Write detail stats
-        if len(self.StatsDetail) > 0:
-            with open(self.PathDetail, "w", newline="") as wf:
-                writer = csv.writer(wf)
-                writer.writerow(self.StatsDetailHeaders)
-                for row in sorted(self.StatsDetail, key=lambda x: (x[1] or "")):
-                    writer.writerow(row)
