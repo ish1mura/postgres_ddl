@@ -126,7 +126,7 @@ class Database():
         """)
 
         for row in cursor.fetchall():
-            self.Version = row.get("version", 0)
+            self.Version = row.get("version") or 0
 
         assert self.Version > 0, \
             "Failed to get PostgreSQL version"

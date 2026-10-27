@@ -8,8 +8,6 @@ import os
 class Config():
     Connects = {}
 
-    WorkPath = ""
-
     Threads = 4
 
     Indent = " " * 2
@@ -46,49 +44,45 @@ class Config():
         assert len(data or {}) > 0, \
             "Config file is empty"
 
-        Config.Connects = data.get("connects", Config.Connects)
+        Config.Connects = data.get("connects") or Config.Connects
         assert len(Config.Connects.keys()) > 0, \
             "No connects in config"
 
-        Config.WorkPath = data.get("path", Config.WorkPath).strip()
-        assert len(Config.WorkPath), \
-            "No work path in config"
+        Config.Threads = data.get("threads") or Config.Threads
 
-        Config.Threads = data.get("threads", Config.Threads)
+        Config.Indent = " " * data.get("indent") or Config.Indent
 
-        Config.Indent = " " * data.get("indent", Config.Indent)
+        Config.NL = data.get("new_line") or Config.NL
 
-        Config.NL = data.get("new_line", Config.NL)
+        schemas = data.get("schemas") or {}
+        Config.SchemasExclude = schemas.get("exclude") or Config.SchemasExclude
 
-        schemas = data.get("schemas", {})
-        Config.SchemasExclude = schemas.get("exclude", Config.SchemasExclude)
-
-        tables = data.get("tables", {})
+        tables = data.get("tables") or {}
         Config.TablesSequencesGrantsShow = (tables.get("sequence_grants_show") is True)
 
-        foreign_servers = data.get("foreign_servers", {})
+        foreign_servers = data.get("foreign_servers") or {}
         Config.ForeignServersUserMappingsShow = (foreign_servers.get("user_mappings_show") is not False)
 
-        functions = data.get("functions", {})
+        functions = data.get("functions") or {}
         Config.FunctionsFolderName = functions.get("folder_name")
         Config.FunctionsParamSign = functions.get("param_sign") or Config.FunctionsParamSign
 
-        triggers = data.get("triggers", {})
+        triggers = data.get("triggers") or {}
         Config.TriggersFolderName = triggers.get("folder_name")
 
-        logs = data.get("logs", {})
+        logs = data.get("logs") or {}
 
-        logs_level = logs.get("level", "INFO").strip().upper()
+        logs_level = (logs.get("level") or "INFO").strip().upper()
         if logs_level == "DEBUG":
             logs_level = logging.DEBUG
         else:
             logs_level = logging.INFO
 
-        logs_format = logs.get("format", "%(asctime)s [%(levelname)s] %(message)s")
+        logs_format = logs.get("format") or "%(asctime)s [%(levelname)s] %(message)s"
 
         logs_handlers = [logging.StreamHandler()]
 
-        logs_path = logs.get("path", "").strip()
+        logs_path = (logs.get("path") or "").strip()
         if len(logs_path) > 0:
             logs_handlers.append(logging.handlers.TimedRotatingFileHandler(logs_path, backupCount=7, when='D', interval=1))
 

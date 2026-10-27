@@ -11,18 +11,22 @@ from postgres_ddl.Database import Database
 from postgres_ddl.System import FileDataProcess
 
 class Grabber():
-    def __init__(self, path_config, connect_name):
+    def __init__(self, path_config, path_result, connect_name):
         Config.Parse(path_config)
 
         self.ConnectName = connect_name.strip().lower()
         assert len(self.ConnectName) > 0, \
             "No connect name"
 
+        self.WorkPath = (path_result or "").strip()
+        assert len(self.WorkPath) > 0, \
+            "No work path"
+
     def NonSuperUserUndo(self):
         """
         Undo changes for superuser-only files
         """
-        os.chdir(Config.WorkPath)
+        os.chdir(self.WorkPath)
         res = subprocess.run(["git", "status", "--short"], shell=True, capture_output=True)
         res = res.stdout.decode("utf-8")
         res = FileDataProcess(res)
@@ -39,8 +43,8 @@ class Grabber():
         database = Database(self.ConnectName)
         database.Parse()
 
-        if os.path.exists(Config.WorkPath):
-            rmtree(Config.WorkPath)
+        if os.path.exists(self.WorkPath):
+            rmtree(self.WorkPath)
 
         write_data = []
         for k,o in database.Objects.items():
@@ -55,7 +59,7 @@ class Grabber():
             file_name = file_name.replace("/", "_")
             file_name = file_name.replace('"', "")
 
-            path = [Config.WorkPath] + path
+            path = [self.WorkPath] + path
             path = os.path.sep.join(path)
             if not os.path.exists(path):
                 os.makedirs(path)

@@ -9,7 +9,7 @@ from postgres_ddl.Config import Config
 from postgres_ddl.Database import Database
 
 class Diff():
-    def __init__(self, path_config, connect_source, connect_target):
+    def __init__(self, path_config, path_result, connect_source, connect_target):
         Config.Parse(path_config)
 
         self.ConnectSource = connect_source.strip().lower()
@@ -20,9 +20,13 @@ class Diff():
         assert len(self.ConnectTarget) > 0, \
             "No target connect name"
 
-        self.PathSource = os.path.join(Config.WorkPath, "_source")
-        self.PathTarget = os.path.join(Config.WorkPath, "_target")
-        self.PathDiff   = os.path.join(Config.WorkPath, "_diff")
+        self.WorkPath = (path_result or "").strip()
+        assert len(self.WorkPath) > 0, \
+            "No work path"
+
+        self.PathSource = os.path.join(self.WorkPath, "_source")
+        self.PathTarget = os.path.join(self.WorkPath, "_target")
+        self.PathDiff   = os.path.join(self.WorkPath, "_diff")
 
     def GetPath(self, db, root, object):
         # Get file name and path
@@ -56,9 +60,9 @@ class Diff():
         logging.info(f"PathDiff = {self.PathDiff}")
 
         # Recreate root folder
-        if os.path.exists(Config.WorkPath):
-            rmtree(Config.WorkPath)
-        os.mkdir(Config.WorkPath)
+        if os.path.exists(self.WorkPath):
+            rmtree(self.WorkPath)
+        os.mkdir(self.WorkPath)
 
         # Subfolders
         os.mkdir(self.PathSource)
@@ -102,7 +106,7 @@ class Diff():
                     wf.write(Config.NL + Config.NL)
 
                 # Write CREATE to object type file
-                with open(os.path.join(Config.WorkPath, f"{sv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
+                with open(os.path.join(self.WorkPath, f"{sv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
                     wf.write(sv.DDL_Create())
                     wf.write(Config.NL + Config.NL)
 
@@ -133,7 +137,7 @@ class Diff():
                     wf.write(Config.NL + Config.NL)
 
                 # Write DROP and CREATE to object type file
-                with open(os.path.join(Config.WorkPath, f"{sv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
+                with open(os.path.join(self.WorkPath, f"{sv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
                     wf.write((Config.NL).join(diff))
                     wf.write(Config.NL + Config.NL)
 
@@ -161,6 +165,6 @@ class Diff():
                 wf.write(Config.NL + Config.NL)
 
             # Write DROP to object type file
-            with open(os.path.join(Config.WorkPath, f"{tv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
+            with open(os.path.join(self.WorkPath, f"{tv.GetObjectType()}.sql"), "a", encoding="utf-8") as wf:
                 wf.write(tv.DDL_Drop())
                 wf.write(Config.NL + Config.NL)

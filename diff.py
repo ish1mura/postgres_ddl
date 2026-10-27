@@ -5,13 +5,15 @@ from argparse import ArgumentParser
 import os
 from postgres_ddl.Diff import Diff
 
+PATH_CURRENT = os.path.dirname(os.path.abspath(__file__))
+
 if __name__ == '__main__':
     parser = ArgumentParser()
 
     parser.add_argument(
         "-c", "--config",
         help    = "Path to config file",
-        default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json"),
+        default = os.path.join(PATH_CURRENT, "config.json"),
     )
 
     parser.add_argument(
@@ -26,10 +28,17 @@ if __name__ == '__main__':
         default = "target",
     )
 
+    parser.add_argument(
+        "-f", "--folder",
+        help = "Path to result folder",
+        default = os.path.join(PATH_CURRENT, "result"),
+    )
+
     args = parser.parse_args()
 
     Diff(
         path_config    = args.config,
+        path_result    = args.folder,
         connect_source = args.source,
         connect_target = args.target
     ).Run()

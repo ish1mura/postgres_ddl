@@ -29,9 +29,6 @@ pip install postgres_ddl
         // ...
     },
 
-    // Work path (Required)
-    "path": "/some/path/to/grabber/result/folder",
-
     // File writing threads (Optional)
     "threads": 8,
 
@@ -97,13 +94,14 @@ From command-line:
 
 ```bash
 python "grab.py" --help
-#   usage: grab.py [-h] [-c CONFIG] [-n NAME]
+#   usage: grab.py [-h] [-c CONFIG] [-n NAME] [-f FOLDER]
 #   options:
 #       -h, --help           show this help message and exit
 #       -c, --config CONFIG  Path to config file
 #       -n, --name NAME      Connect name from config file
+#       -f, --folder FOLDER  Path to result folder
 
-python "grab.py" -c /some/path/to/config.json -n db_test
+python "grab.py" -c /some/path/to/config.json -n db_test -f /some/path/to/result
 ```
 
 From python script:
@@ -113,6 +111,7 @@ from postgres_ddl.Grabber import Grabber
 
 Grabber(
     path_config  = "/some/path/to/config.json",
+    path_result  = "/some/path/to/result",
     connect_name = "db_test"
 ).Run()
 ```
@@ -125,14 +124,15 @@ From command-line:
 
 ```bash
 python "diff.py" --help
-#   usage: diff.py [-h] [-c CONFIG] [-s SOURCE] [-t TARGET]
+#   usage: diff.py [-h] [-c CONFIG] [-s SOURCE] [-t TARGET] [-f FOLDER]
 #   options:
 #       -h, --help           show this help message and exit
 #       -c, --config CONFIG  Path to config file
 #       -s, --source SOURCE  Source connect name from config file
 #       -t, --target TARGET  Target connect name from config file
+#       -f, --folder FOLDER  Path to result folder
 
-python "diff.py" -c /some/path/to/config.json -s db_test -t db_target
+python "diff.py" -c /some/path/to/config.json -s db_test -t db_target -f /some/path/to/result
 ```
 
 From python script:
@@ -142,10 +142,13 @@ from postgres_ddl.Diff import Diff
 
 Diff(
     path_config    = "/some/path/to/config.json",
+    path_result    = "/some/path/to/result",
     connect_source = "db_test",
     connect_target = "db_target"
 ).Run()
 ```
+
+Check diff results in `/some/path/to/result`.
 
 # Links
 

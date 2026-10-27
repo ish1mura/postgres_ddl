@@ -5,24 +5,33 @@ from argparse import ArgumentParser
 import os
 from postgres_ddl.Grabber import Grabber
 
+PATH_CURRENT = os.path.dirname(os.path.abspath(__file__))
+
 if __name__ == '__main__':
     parser = ArgumentParser()
 
     parser.add_argument(
         "-c", "--config",
         help = "Path to config file",
-        default = os.path.join(os.path.dirname(os.path.abspath(__file__)), "config.json"),
+        default = os.path.join(PATH_CURRENT, "config.json"),
     )
 
     parser.add_argument(
-        "-n", "--name",
+        "-n", "--connect",
         help = "Connect name from config file",
         default = "default",
+    )
+
+    parser.add_argument(
+        "-f", "--folder",
+        help = "Path to result folder",
+        default = os.path.join(PATH_CURRENT, "result"),
     )
 
     args = parser.parse_args()
 
     Grabber(
         path_config  = args.config,
-        connect_name = args.name
+        path_result  = args.folder,
+        connect_name = args.connect
     ).Run()
